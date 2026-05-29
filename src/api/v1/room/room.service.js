@@ -31,10 +31,10 @@ class RoomService {
         }
 
         const updatedRoom = await roomDB.updateRoom(data);
-        this.rooms[updatedRoom.id] = updatedRoom;
+        rooms[updatedRoom.id] = updatedRoom;
 
         roomRosTopic.publishRoomEvent('UPDATE', updatedRoom);
-        return this.rooms[updatedRoom.id];
+        return rooms[updatedRoom.id];
     }
 
     async deleteRoom(id) {
@@ -45,7 +45,7 @@ class RoomService {
         }
 
         await roomDB.deleteRoom(id);
-        delete this.rooms[id];
+        delete rooms[id];
 
         roomRosTopic.publishRoomEvent('DELETED', { id });
         return;

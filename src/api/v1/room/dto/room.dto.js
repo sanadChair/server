@@ -17,6 +17,7 @@ export const registerRoomDto = {
 
 export const updateRoomDto = {
     body: z.object({
+        id: z.uuid(),
         name: z.string().optional(),
         min_x: z.number().optional(),
         max_x: z.number().optional(),

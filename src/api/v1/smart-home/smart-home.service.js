@@ -78,6 +78,7 @@ class SmartHomeService {
         if (!smartHomeDevicesDB.getDevice(id)) return false;
 
         const device = smartHomeDevicesDB.getDevice(id);
+        console.log(device);
         state = this.validateState(state, device.control_type);
         const response = await fetch(`http://${device.ip}:${SMART_DEV_PORT}/control`, {
             method: 'POST',
@@ -106,8 +107,9 @@ class SmartHomeService {
         const devices = smartHomeDevicesDB.getAllDevices();
         if (devices[device_id]) {
             logger.warn(`[SMART HOME] device ${device_id} already exist`);
-            throw new Error(`trying to register a device that already exists device ID: ${id}`);
+            throw new Error(`trying to register a device that already exists device ID: ${device_id}`);
         }
+        this.validateState(device.state, device.control_type)
         const savedDevice = await smartHomeDevicesDB.saveDevice(device, room);
         smartHomeRosTopic.publishDeviceEvent('ADD', savedDevice);
         return savedDevice;

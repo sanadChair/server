@@ -65,8 +65,8 @@ class SmartHomeService {
 
         this.moveDevice = new ROSLIB.Service({
             ros: this.ros,
-            name: '/smarthome/moveDevcie',
-            serviceType: '/sanad_interface/srv/MoveDevice',
+            name: '/smarthome/moveDevice',
+            serviceType: '/sanad_interfaces/srv/MoveDevice',
         });
         this.moveDevice.advertise(this.moveDeviceCallback.bind(this));
     }

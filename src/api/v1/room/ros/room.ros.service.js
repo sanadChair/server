@@ -69,10 +69,8 @@ class RoomRosService {
     }
 
     getAllRoomsCallback(req, res) {
-        console.log('sending rooms to ros');
         const rooms = roomService.getAllRooms();
         res.rooms = Object.values(rooms || {}).map(mapToRosRoom);
-        console.log(rooms)
         return true;
     }
 
@@ -97,7 +95,7 @@ class RoomRosService {
         // Fallback: look up by name (req.name from GetRoom.srv) or id
         const room =
             Object.values(rooms || {}).find(r => r.name === req.name || r.id === req.name) ||
-            rooms?.[req.name];
+            rooms?.[req.id];
         res.room = room ? mapToRosRoom(room) : mapToRosRoom({});
         res.success = !!room;
         return true;
@@ -106,7 +104,7 @@ class RoomRosService {
     registerRoomCallback(req, res) {
         const room = req.room;
         const rooms = roomService.getAllRooms();
-        if (rooms[id] || Object.values(rooms || {}).find(r => r.name === room.name)) {
+        if (rooms[room.id] || Object.values(rooms || {}).find(r => r.name === room.name)) {
             logger.warn(
                 `[Room ROS service] Failed to create room (name=${room.name}): room already exists`
             );

@@ -7,8 +7,6 @@ class RoomDB {
         this.rooms;
     }
 
-
-
     get roomsDb() {
         return dbRepositories.room;
     }
@@ -35,14 +33,38 @@ class RoomDB {
         if (this.rooms) {
             return this.rooms;
         }
-        throw new Error(`room DB wasnt initilaized yet, try restarting server`)
+        throw new Error(`room DB wasnt initilaized yet, try restarting server`);
     }
 
     getRoomById(id) {
         if (this.rooms) {
             return this.rooms[id];
         }
-        throw new Error(`room DB wasnt initilaized yet, try restarting server`)
+        throw new Error(`room DB wasnt initilaized yet, try restarting server`);
+    }
+
+    syncDeviceRelation(device, previousRoomId) {
+        if (!this.rooms) return;
+
+        if (previousRoomId && this.rooms[previousRoomId]?.devices) {
+            this.rooms[previousRoomId].devices = this.rooms[previousRoomId].devices.filter(
+                currentDevice => currentDevice.id !== device.id
+            );
+        }
+
+        const roomId = device.room?.id;
+        if (!roomId || !this.rooms[roomId]) return;
+
+        this.rooms[roomId].devices = this.rooms[roomId].devices || [];
+        const existingIndex = this.rooms[roomId].devices.findIndex(
+            currentDevice => currentDevice.id === device.id
+        );
+
+        if (existingIndex >= 0) {
+            this.rooms[roomId].devices[existingIndex] = device;
+        } else {
+            this.rooms[roomId].devices.push(device);
+        }
     }
 
     async registerRoom(room) {
@@ -53,9 +75,16 @@ class RoomDB {
                 throw new Error(` trying to register a room that already exist: ${room.name}`);
             }
         }
-        console.log(room);
-        const saved = await this.roomsDb.save(room);
+        const roomToSave = { ...room };
+        delete roomToSave.created_at;
+        delete roomToSave.updated_at;
+
+        const saved = await this.roomsDb.save(roomToSave);
         rooms[saved.id] = saved;
+        if (saved.devices?.length || room.devices?.length) {
+            const { smartHomeDevicesDB } = await import('../smart-home/smart-home.db.js');
+            await smartHomeDevicesDB.cacheSavedDevices(saved.devices ?? room.devices);
+        }
         logger.info(`[ROOM DB] Saved room: ${saved.id}`);
         return saved;
     }
@@ -65,9 +94,18 @@ class RoomDB {
         const id = roomData.id;
         const updateData = { ...roomData };
         delete updateData.id;
+        delete updateData.created_at;
+        delete updateData.updated_at;
 
-        await this.roomsDb.update({ id }, updateData);
-        rooms[id] = { ...rooms[id], ...updateData };
+        await this.roomsDb.save({ ...rooms[id], ...updateData, id });
+        rooms[id] = await this.roomsDb.findOne({
+            where: { id },
+            relations: { devices: true },
+        });
+        if (rooms[id]?.devices?.length || updateData.devices?.length) {
+            const { smartHomeDevicesDB } = await import('../smart-home/smart-home.db.js');
+            await smartHomeDevicesDB.cacheSavedDevices(rooms[id]?.devices ?? updateData.devices);
+        }
         logger.info(`[ROOM DB] Updated room info: ${id}`);
         return rooms[id];
     }

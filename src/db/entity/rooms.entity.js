@@ -38,12 +38,23 @@ export const RoomSchema = new EntitySchema({
             type: 'real',
             default: 0.0,
         },
+        created_at: {
+            type: 'datetime',
+            nullable: false,
+            createDate: true,
+        },
+        updated_at: {
+            type: 'datetime',
+            nullable: false,
+            updateDate: true,
+        },
     },
     relations: {
         devices: {
             type: 'one-to-many',
             target: 'devices',
             inverseSide: 'room',
+            cascade: true,
         },
     },
 });

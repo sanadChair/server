@@ -28,10 +28,12 @@ export const DevicesSchema = new EntitySchema({
         created_at: {
             type: 'datetime',
             nullable: false,
+            createDate: true,
         },
         updated_at: {
             type: 'datetime',
             nullable: false,
+            updateDate: true,
         },
     },
     relations: {

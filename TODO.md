@@ -1,0 +1,3 @@
+- [ ] create a Ros module transforming ros topics/services/actions into configs
+- [ ] create a docs generator by binding to the router object
+- [ ] create a way to bind routes to a specific ros gatway instead of a controller

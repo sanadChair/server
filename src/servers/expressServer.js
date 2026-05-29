@@ -42,8 +42,8 @@ export default class ExpressServer {
 
     mountRoutesAndMiddlewares(routerRegistry, prefix = '/api/v1') {
         for (const routerConfig of routerRegistry) {
-            this.attachRoutes(routerConfig, prefix);
             this.attachMiddlewares(routerConfig);
+            this.attachRoutes(routerConfig, prefix);
         }
         this.app.use(errorHandler);
         return this;
