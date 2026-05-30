@@ -2,8 +2,6 @@ import { localDiscovery } from './discovery.udp.js';
 import { smartHomeDevicesDB } from './smart-home.db.js';
 import logger from '#utils/logger.js';
 import smartHomeRosTopic from './ros/smart-home.ros.topic.js';
-import { roomDB } from '../room/room.db.js';
-import roomRosTopic from '../room/ros/room.ros.topic.js';
 
 const SMART_DEV_PORT = process.env.SMART_DEV_PORT;
 class SmartHomeService {
@@ -171,26 +169,9 @@ class SmartHomeService {
             );
         }
 
-        const previousRoomId = existingDevice.room?.id;
         const updatedDevice = await smartHomeDevicesDB.updateRoom(id, roomId);
-        const nextRoomId = updatedDevice.room?.id;
 
         smartHomeRosTopic.publishDeviceEvent('UPDATE', updatedDevice);
-
-        if (previousRoomId && previousRoomId !== nextRoomId) {
-            const previousRoom = roomDB.getRoomById(previousRoomId);
-            if (previousRoom) {
-                roomRosTopic.publishRoomEvent('UPDATE', previousRoom);
-            }
-        }
-
-        if (nextRoomId) {
-            const nextRoom = roomDB.getRoomById(nextRoomId);
-            if (nextRoom) {
-                roomRosTopic.publishRoomEvent('UPDATE', nextRoom);
-            }
-        }
-
         return updatedDevice;
     }
 }

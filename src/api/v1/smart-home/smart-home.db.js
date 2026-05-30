@@ -81,7 +81,7 @@ class SmartHomeDevicesDB {
         return savedDevice;
     }
 
-    async cacheSavedDevices(devices = []) {
+    async cacheSavedDevices(devices = [], options = {}) {
         this.getAllDevices();
         const cachedDevices = [];
 
@@ -91,7 +91,7 @@ class SmartHomeDevicesDB {
 
             const previousRoomId = this.devices[id]?.room?.id;
             const savedDevice = await this.refreshDevice(id);
-            roomDB.syncDeviceRelation(savedDevice, previousRoomId);
+            roomDB.syncDeviceRelation(savedDevice, previousRoomId, options);
             cachedDevices.push(savedDevice);
         }
 
