@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const registerRoomDto = {
     body: z.object({
-        id: z.uuid(),
+        id: z.uuid().optional(),
         name: z.string(),
         min_x: z.number(),
         max_x: z.number(),

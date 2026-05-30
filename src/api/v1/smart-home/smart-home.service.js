@@ -2,6 +2,8 @@ import { localDiscovery } from './discovery.udp.js';
 import { smartHomeDevicesDB } from './smart-home.db.js';
 import logger from '#utils/logger.js';
 import smartHomeRosTopic from './ros/smart-home.ros.topic.js';
+import { roomDB } from '../room/room.db.js';
+import roomRosTopic from '../room/ros/room.ros.topic.js';
 
 const SMART_DEV_PORT = process.env.SMART_DEV_PORT;
 class SmartHomeService {
@@ -11,11 +13,11 @@ class SmartHomeService {
 
     async discoverNewDevice(discoveredDevices) {
         for (const [id, device] of Object.entries(discoveredDevices)) {
-            if (!smartHomeDevicesDB.getDevice(id)) {
+            if (!smartHomeDevicesDB.hasDevice(id)) {
                 const deviceToStore = { ...device, connected: true };
-                await smartHomeDevicesDB.saveDevice(deviceToStore);
+                const savedDevice = await smartHomeDevicesDB.saveDevice(deviceToStore);
                 logger.info(`[SMART HOME] New device discovered: ${id}`);
-                smartHomeRosTopic.publishDeviceEvent('NEW_DEVICE', deviceToStore);
+                smartHomeRosTopic.publishDeviceEvent('NEW_DEVICE', savedDevice);
                 continue;
             }
 
@@ -53,9 +55,9 @@ class SmartHomeService {
     }
 
     async getDevInfo(id) {
-        if (!smartHomeDevicesDB.getDevice(id))
-            throw new Error(`device doesn't currently exist on the network`);
         const device = smartHomeDevicesDB.getDevice(id);
+        if (!device)
+            throw new Error(`device doesn't currently exist on the network`);
         const response = await fetch(`http://${device.ip}:${SMART_DEV_PORT}/info?id=${id}`);
         const data = await response.json();
         return { ...device, ...data };
@@ -75,12 +77,11 @@ class SmartHomeService {
     }
 
     async controlDev(id, state) {
-        if (!smartHomeDevicesDB.getDevice(id)) return false;
-
         const device = smartHomeDevicesDB.getDevice(id);
-        console.log(device);
+        if (!device) return false;
+
         state = this.validateState(state, device.control_type);
-        const response = await fetch(`http://${device.ip}:${SMART_DEV_PORT}/control`, {
+        await fetch(`http://${device.ip}:${SMART_DEV_PORT}/control`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -104,12 +105,11 @@ class SmartHomeService {
 
     async addDevice(device, room) {
         const device_id = device.deviceId ?? device.id;
-        const devices = smartHomeDevicesDB.getAllDevices();
-        if (devices[device_id]) {
+        if (smartHomeDevicesDB.hasDevice(device_id)) {
             logger.warn(`[SMART HOME] device ${device_id} already exist`);
             throw new Error(`trying to register a device that already exists device ID: ${device_id}`);
         }
-        this.validateState(device.state, device.control_type)
+        this.validateState(device.state, device.control_type);
         const savedDevice = await smartHomeDevicesDB.saveDevice(device, room);
         smartHomeRosTopic.publishDeviceEvent('ADD', savedDevice);
         return savedDevice;
@@ -139,11 +139,11 @@ class SmartHomeService {
     }
 
     async deleteDevice(id) {
-        if (!id || !smartHomeDevicesDB.getDevice(id)) {
+        const device = smartHomeDevicesDB.getDevice(id);
+        if (!id || !device) {
             logger.warn(`[SMART HOME] device ${id} doesn't exist`);
             throw new Error(`trying to delete device that doesn't exist device id: ${id}`);
         }
-        const device = smartHomeDevicesDB.getDevice(id);
 
         try {
             const response = await fetch(
@@ -163,13 +163,35 @@ class SmartHomeService {
     }
 
     async changeDeviceRoom({ id, roomId }) {
-        if (!smartHomeDevicesDB.getDevice(id)) {
+        const existingDevice = smartHomeDevicesDB.getDevice(id);
+        if (!existingDevice) {
             logger.warn(`[SMART HOME] device ${id} doesn't exist`);
             throw new Error(
                 `trying to update room for a device that doesn't exist device id: ${id}`
             );
         }
-        return await smartHomeDevicesDB.updateRoom(id, roomId);
+
+        const previousRoomId = existingDevice.room?.id;
+        const updatedDevice = await smartHomeDevicesDB.updateRoom(id, roomId);
+        const nextRoomId = updatedDevice.room?.id;
+
+        smartHomeRosTopic.publishDeviceEvent('UPDATE', updatedDevice);
+
+        if (previousRoomId && previousRoomId !== nextRoomId) {
+            const previousRoom = roomDB.getRoomById(previousRoomId);
+            if (previousRoom) {
+                roomRosTopic.publishRoomEvent('UPDATE', previousRoom);
+            }
+        }
+
+        if (nextRoomId) {
+            const nextRoom = roomDB.getRoomById(nextRoomId);
+            if (nextRoom) {
+                roomRosTopic.publishRoomEvent('UPDATE', nextRoom);
+            }
+        }
+
+        return updatedDevice;
     }
 }
 
