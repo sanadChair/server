@@ -1,0 +1,144 @@
+openapi: 3.0.3
+info:
+  title: SANAD User API
+  description: API to create users and fetch user data.
+  version: 1.0.0
+
+paths:
+  /api/v1/user:
+    get:
+      summary: Get user by email
+      description: Runtime currently reads the email from the request body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetUserRequest'
+      responses:
+        '200':
+          description: User data without telegram_session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create user
+      description: Creates a new user. Email is unique.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '200':
+          description: Created user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    GetUserRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+
+    CreateUserRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+        - is_dev_user
+        - telegram_number
+      properties:
+        name:
+          type: string
+          example: Omar
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          example: secret
+        is_dev_user:
+          type: boolean
+          example: true
+        telegram_number:
+          type: string
+          example: '+201001234567'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Omar
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          example: secret
+        is_dev_user:
+          type: boolean
+          example: true
+        telegram_number:
+          type: string
+          example: '+201001234567'
+
+    UserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/User'
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        reason:
+          type: string
+          example: Validation error
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    Meta:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          example: '17/06/2026, 08:32:32'

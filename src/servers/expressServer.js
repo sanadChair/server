@@ -6,6 +6,8 @@ import swaggerUiExpress from 'swagger-ui-express';
 import { dataValidation } from '#src/middleware/validationMiddleware.js';
 import { globalControllerWrapper } from '#utils/controller.wrapper.js';
 import { errorHandler } from '#src/middleware/global.error.handler.middleware.js';
+import { Authenticator } from '#src/middleware/authenticator.middleware.js';
+import logger from '#utils/logger.js';
 
 export default class ExpressServer {
     constructor(app) {
@@ -42,25 +44,22 @@ export default class ExpressServer {
 
     mountRoutesAndMiddlewares(routerRegistry, prefix = '/api/v1') {
         for (const routerConfig of routerRegistry) {
-            this.attachMiddlewares(routerConfig);
-            this.attachRoutes(routerConfig, prefix);
+            this.attachRoutesAndMiddlewares(routerConfig, prefix);
         }
         this.app.use(errorHandler);
         return this;
     }
 
-    attachRoutes(routerConfig, prefix = '/api/v1') {
+    attachRoutesAndMiddlewares(routerConfig, prefix = '/api/v1') {
         const routes = routerConfig.routes || routerConfig;
         const base = routerConfig.base || '';
+
         if (routerConfig.customRouter) {
             for (const route of routes) {
                 const path = prefix + base + (route.path ?? '');
-                const handlers = [];
-                if (route.dto) {
-                    handlers.push(dataValidation(route.dto));
-                }
-                handlers.push(globalControllerWrapper(route.controller));
-                console.log("initializing: ",  route.method,  routerConfig.base + route.path)
+                const handlers = [...this.getMiddlewares(route), this.getController(route)];
+                logger.info(`[EXPRESS SERVER] initializing: ${route.method} ${base + route.path}`);
+
                 switch (route.method?.toUpperCase()) {
                     case 'GET':
                         this.app.get(path, ...handlers);
@@ -87,17 +86,23 @@ export default class ExpressServer {
         }
     }
 
-    attachMiddlewares(routerConfig, prefix = '/api/v1') {
-        const routes = routerConfig.routes || routerConfig;
-        const base = routerConfig.base || '';
-        if (routerConfig.customRouter)
-            for (const route of routes) {
-                const path = prefix + base + (route.path ?? '');
-                if (route.middlewares)
-                    for (const middleware of route.middlewares) this.app.use(path, middleware);
-            }
+    getMiddlewares(route) {
+        const middlewares = [];
+        if (route.dto) {
+            middlewares.push(dataValidation(route.dto));
+        }
+        if (route.authenticated) {
+            middlewares.push(Authenticator);
+        }
+        if (route.middlewares) {
+            middlewares.push(...route.middlewares);
+        }
+        return middlewares;
     }
 
+    getController(route) {
+        return globalControllerWrapper(route.controller);
+    }
     setUpSwaggerDocs(options, prefix = '/api/v1', endpoint = '/docs') {
         this.swaggerDocs = swaggerJsdoc(options);
         if (this.swaggerDocs) {

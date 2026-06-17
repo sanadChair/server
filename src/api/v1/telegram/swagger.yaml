@@ -1,0 +1,422 @@
+openapi: 3.0.3
+info:
+  title: SANAD Telegram API
+  description: API to create Telegram sessions, read chats/messages, and send messages.
+  version: 1.0.0
+
+paths:
+  /api/v1/telegram/session/start:
+    post:
+      summary: Start Telegram session
+      description: Starts a Telegram session for a user by id or email. If telegram_session already exists in the DB, it reconnects with that session string and does not start signup again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLookupRequest'
+      responses:
+        '200':
+          description: Session connected, or OTP flow started and waiting for code.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringResponse'
+
+  /api/v1/telegram/need-otp:
+    post:
+      summary: Check if OTP is needed
+      description: Requires temporary dev authentication. Send body.id and the x-dev-user header to skip real auth until authentication is implemented.
+      security:
+        - DevUserHeader: []
+      parameters:
+        - $ref: '#/components/parameters/XDevUser'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NeedOtpRequest'
+      responses:
+        '200':
+          description: Whether the phone number has a pending OTP session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooleanResponse'
+        '501':
+          description: Real authentication is not implemented; use x-dev-user for now.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/telegram/code:
+    post:
+      summary: Submit Telegram OTP
+      description: Requires temporary dev authentication. Send body.id and the x-dev-user header to skip real auth until authentication is implemented.
+      security:
+        - DevUserHeader: []
+      parameters:
+        - $ref: '#/components/parameters/XDevUser'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostTelegramCodeRequest'
+      responses:
+        '200':
+          description: Telegram session connected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringResponse'
+        '501':
+          description: Real authentication is not implemented; use x-dev-user for now.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/telegram/chat/groups:
+    get:
+      summary: Get Telegram group dialogs
+      description: Runtime currently reads id/email and GramJS getDialogs options from the request body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetTelegramChatsRequest'
+      responses:
+        '200':
+          description: Group and channel dialogs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialogListResponse'
+
+  /api/v1/telegram/chat/users:
+    get:
+      summary: Get Telegram user dialogs
+      description: Runtime currently reads id/email and GramJS getDialogs options from the request body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetTelegramChatsRequest'
+      responses:
+        '200':
+          description: User dialogs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialogListResponse'
+
+  /api/v1/telegram/chat/messages:
+    get:
+      summary: Get Telegram chat messages
+      description: Runtime currently reads chat and GramJS getMessages options from the request body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetTelegramMessagesRequest'
+      responses:
+        '200':
+          description: Chat messages.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageListResponse'
+
+  /api/v1/telegram/chat/send:
+    post:
+      summary: Send Telegram message
+      description: Sends a message to a chat. Extra GramJS sendMessage options can be passed in options.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendTelegramMessageRequest'
+      responses:
+        '200':
+          description: Sent message.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+components:
+  securitySchemes:
+    DevUserHeader:
+      type: apiKey
+      in: header
+      name: x-dev-user
+      description: Temporary development bypass. Current Authenticator allows the request when this header exists and body.id points to a user. Real authentication is not implemented yet.
+
+  parameters:
+    XDevUser:
+      in: header
+      name: x-dev-user
+      required: true
+      schema:
+        type: string
+        example: 'true'
+      description: Temporary auth bypass header. Use with body.id on authenticated Telegram routes.
+
+  schemas:
+    UserLookupRequest:
+      type: object
+      description: Provide either id or email.
+      properties:
+        id:
+          oneOf:
+            - type: integer
+            - type: string
+          example: 1
+        email:
+          type: string
+          format: email
+          example: user@example.com
+
+    NeedOtpRequest:
+      type: object
+      required:
+        - id
+        - phoneNumber
+      properties:
+        id:
+          oneOf:
+            - type: integer
+            - type: string
+          example: 1
+          description: Required by the temporary Authenticator middleware.
+        phoneNumber:
+          type: string
+          example: '+201001234567'
+
+    PostTelegramCodeRequest:
+      type: object
+      required:
+        - id
+        - phoneNumber
+        - otp
+      properties:
+        id:
+          oneOf:
+            - type: integer
+            - type: string
+          example: 1
+          description: Required by the temporary Authenticator middleware.
+        phoneNumber:
+          type: string
+          example: '+201001234567'
+        otp:
+          type: string
+          example: '12345'
+
+    GetTelegramChatsRequest:
+      allOf:
+        - $ref: '#/components/schemas/UserLookupRequest'
+        - type: object
+          properties:
+            options:
+              type: object
+              description: Passed directly to GramJS getDialogs, such as limit, offsetDate, offsetId, offsetPeer, ignorePinned, ignoreMigrated, folder, or archived.
+              additionalProperties: true
+              example:
+                limit: 20
+                offsetId: 0
+
+    GetTelegramMessagesRequest:
+      allOf:
+        - $ref: '#/components/schemas/UserLookupRequest'
+        - type: object
+          required:
+            - chat
+          properties:
+            chat:
+              oneOf:
+                - type: string
+                - type: integer
+              example: '@some_chat'
+            options:
+              type: object
+              description: Passed directly to GramJS getMessages, such as limit, offsetId, offsetDate, minId, maxId, addOffset, search, ids, reverse, replyTo, or scheduled.
+              additionalProperties: true
+              example:
+                limit: 30
+                offsetId: 100
+
+    SendTelegramMessageRequest:
+      allOf:
+        - $ref: '#/components/schemas/UserLookupRequest'
+        - type: object
+          required:
+            - chat
+            - message
+          properties:
+            chat:
+              oneOf:
+                - type: string
+                - type: integer
+              example: '@some_chat'
+            message:
+              type: string
+              example: Hello from SANAD
+            options:
+              type: object
+              description: Passed directly to GramJS sendMessage, such as replyTo, parseMode, linkPreview, silent, schedule, or noforwards.
+              additionalProperties: true
+              example:
+                silent: true
+
+    Dialog:
+      type: object
+      properties:
+        id:
+          type: string
+          example: '123456789'
+        name:
+          type: string
+          example: Omar
+        title:
+          type: string
+          example: SANAD Group
+        unreadCount:
+          type: integer
+          example: 0
+        isUser:
+          type: boolean
+          example: false
+        isGroup:
+          type: boolean
+          example: true
+        isChannel:
+          type: boolean
+          example: false
+        archived:
+          type: boolean
+          example: false
+        pinned:
+          type: boolean
+          example: false
+
+    TelegramMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 10
+        chatId:
+          type: string
+          example: '123456789'
+        senderId:
+          type: string
+          example: '987654321'
+        date:
+          type: integer
+          example: 1781685152
+        message:
+          type: string
+          example: Hello
+        out:
+          type: boolean
+          example: false
+        mentioned:
+          type: boolean
+          example: false
+        mediaUnread:
+          type: boolean
+          example: false
+        silent:
+          type: boolean
+          example: false
+        post:
+          type: boolean
+          example: false
+
+    DialogListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dialog'
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    MessageListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TelegramMessage'
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    MessageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/TelegramMessage'
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    StringResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: string
+          example: session connected
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    BooleanResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: boolean
+          example: true
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        reason:
+          type: string
+          example: authentication is not implemented yet, try setting x-dev-user for testing
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    Meta:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          example: '17/06/2026, 08:32:32'

@@ -1,3 +1,8 @@
+# Database
+# it holds the telegram session so dont upload it
+database.sqlite
+*.sqlite
+
 # Dependencies
 node_modules/
 npm-debug.log
