@@ -4,9 +4,15 @@ info:
   description: API for managing Nav2 goals through ROSLIB.
   version: 1.0.0
 
+tags:
+  - name: Goal
+    description: Navigation goal management through ROSLIB.
+
 paths:
   /api/v1/goal:
     get:
+      tags:
+        - Goal
       summary: Get current navigation goal
       description: Returns the plain local snapshot of the active ROSLIB goal.
       responses:
@@ -23,6 +29,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
+      tags:
+        - Goal
       summary: Set a new navigation goal
       description: Sends a target pose to the Nav2 NavigateToPose action server.
       requestBody:
@@ -45,6 +53,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ValidationErrorResponse'
     delete:
+      tags:
+        - Goal
       summary: Cancel active goals
       description: Sends a zero UUID CancelGoal request to cancel all NavigateToPose goals, then clears the local active goal snapshot.
       responses:
@@ -63,6 +73,8 @@ paths:
 
   /api/v1/goal/feedback:
     get:
+      tags:
+        - Goal
       summary: Get current goal feedback
       responses:
         '200':

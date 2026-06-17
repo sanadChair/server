@@ -4,9 +4,15 @@ info:
   description: API to create Telegram sessions, read chats/messages, and send messages.
   version: 1.0.0
 
+tags:
+  - name: Telegram
+    description: Telegram sessions, chats, messages, and temporary OTP flow.
+
 paths:
   /api/v1/telegram/session/start:
     post:
+      tags:
+        - Telegram
       summary: Start Telegram session
       description: Starts a Telegram session for a user by id or email. If telegram_session already exists in the DB, it reconnects with that session string and does not start signup again.
       requestBody:
@@ -25,6 +31,8 @@ paths:
 
   /api/v1/telegram/need-otp:
     post:
+      tags:
+        - Telegram
       summary: Check if OTP is needed
       description: Requires temporary dev authentication. Send body.id and the x-dev-user header to skip real auth until authentication is implemented.
       security:
@@ -53,6 +61,8 @@ paths:
 
   /api/v1/telegram/code:
     post:
+      tags:
+        - Telegram
       summary: Submit Telegram OTP
       description: Requires temporary dev authentication. Send body.id and the x-dev-user header to skip real auth until authentication is implemented.
       security:
@@ -81,6 +91,8 @@ paths:
 
   /api/v1/telegram/chat/groups:
     get:
+      tags:
+        - Telegram
       summary: Get Telegram group dialogs
       description: Runtime currently reads id/email and GramJS getDialogs options from the request body.
       requestBody:
@@ -99,6 +111,8 @@ paths:
 
   /api/v1/telegram/chat/users:
     get:
+      tags:
+        - Telegram
       summary: Get Telegram user dialogs
       description: Runtime currently reads id/email and GramJS getDialogs options from the request body.
       requestBody:
@@ -117,6 +131,8 @@ paths:
 
   /api/v1/telegram/chat/messages:
     get:
+      tags:
+        - Telegram
       summary: Get Telegram chat messages
       description: Runtime currently reads chat and GramJS getMessages options from the request body.
       requestBody:
@@ -135,6 +151,8 @@ paths:
 
   /api/v1/telegram/chat/send:
     post:
+      tags:
+        - Telegram
       summary: Send Telegram message
       description: Sends a message to a chat. Extra GramJS sendMessage options can be passed in options.
       requestBody:

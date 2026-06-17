@@ -4,9 +4,15 @@ info:
   description: API for manual teleoperation and monitoring of wheelchair velocity commands.
   version: 1.0.0
 
+tags:
+  - name: Wheelchair
+    description: Manual teleoperation and wheelchair velocity commands.
+
 paths:
   /api/v1/wheelchair/velocity:
     get:
+      tags:
+        - Wheelchair
       summary: Get current velocity inputs
       description: Retrieves the last commanded linear and angular velocity inputs for the wheelchair.
       responses:
@@ -18,6 +24,8 @@ paths:
                 $ref: '#/components/schemas/VelocityResponse'
 
     post:
+      tags:
+        - Wheelchair
       summary: Update wheelchair velocity
       description: Publishes new linear and angular velocity commands to the wheelchair.
       requestBody:

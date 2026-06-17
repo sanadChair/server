@@ -4,9 +4,15 @@ info:
   description: API to create users and fetch user data.
   version: 1.0.0
 
+tags:
+  - name: User
+    description: User creation and lookup.
+
 paths:
   /api/v1/user:
     get:
+      tags:
+        - User
       summary: Get user by email
       description: Runtime currently reads the email from the request body.
       requestBody:
@@ -29,6 +35,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
+      tags:
+        - User
       summary: Create user
       description: Creates a new user. Email is unique.
       requestBody:

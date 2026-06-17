@@ -4,9 +4,15 @@ info:
   description: API to manage rooms and navigate to stored room poses.
   version: 1.0.0
 
+tags:
+  - name: Room
+    description: Room management and room navigation.
+
 paths:
   /api/v1/room:
     get:
+      tags:
+        - Room
       summary: Get all rooms
       responses:
         '200':
@@ -16,6 +22,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/RoomsMapResponse'
     post:
+      tags:
+        - Room
       summary: Register a new room
       requestBody:
         required: true
@@ -37,6 +45,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ValidationErrorResponse'
     patch:
+      tags:
+        - Room
       summary: Update existing room info
       description: Runtime expects the room id in the request body.
       requestBody:
@@ -55,6 +65,8 @@ paths:
 
   /api/v1/room/{id}:
     get:
+      tags:
+        - Room
       summary: Get a room by id
       parameters:
         - $ref: '#/components/parameters/RoomId'
@@ -66,6 +78,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/RoomResponse'
     delete:
+      tags:
+        - Room
       summary: Delete a room by id
       parameters:
         - $ref: '#/components/parameters/RoomId'
@@ -79,6 +93,8 @@ paths:
 
   /api/v1/room/{id}/navigate:
     get:
+      tags:
+        - Room
       summary: Navigate robot to room
       description: Sends a Nav2 NavigateToPose goal using the room's stored pose.
       parameters:

@@ -4,9 +4,15 @@ info:
   description: API for retrieving occupancy grid map data from ROS.
   version: 1.0.0
 
+tags:
+  - name: Map
+    description: Robot occupancy grid map data from ROS.
+
 paths:
   /api/v1/map:
     get:
+      tags:
+        - Map
       summary: Get occupancy grid map
       description: Returns the metadata and the 1D array of cell data representing the environment.
       responses:

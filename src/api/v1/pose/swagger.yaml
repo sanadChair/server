@@ -4,9 +4,15 @@ info:
   description: API for retrieving the current localized position and orientation of the robot.
   version: 1.0.0
 
+tags:
+  - name: Pose
+    description: Current localized robot position and orientation.
+
 paths:
   /api/v1/pose:
     get:
+      tags:
+        - Pose
       summary: Get current robot pose
       description: Returns the robot's current x, y coordinates and yaw orientation relative to a specific coordinate frame (usually "map").
       responses:

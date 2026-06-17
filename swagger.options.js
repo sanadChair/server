@@ -12,7 +12,7 @@ export const swaggerOptions = {
       version: '1.0.0',
       description: 'API documentation',
     },
-    servers: [{ url: 'http://localhost:3000' }],
+    servers: [{ url: 'http://localhost:5051' }],
   },
   apis: [path.join(__dirname, 'src/api/v1/**/swagger.yaml')],
 };
