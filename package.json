@@ -47,11 +47,11 @@
     "reflect-metadata": "^0.2.2",
     "roslib": "^1.4.1",
     "socket.io": "^4.8.1",
-    "sqlite3": "^5.1.7",
+    "sqlite3": "^6.0.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "telegram": "^2.26.22",
-    "typeorm": "^0.3.29",
+    "typeorm": "^1.0.0",
     "winston": "^3.18.1",
     "zod": "^4.4.3"
   },
