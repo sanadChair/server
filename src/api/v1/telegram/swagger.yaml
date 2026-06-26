@@ -29,7 +29,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/StringResponse'
 
-  /api/v1/telegram/need-otp:
+  /api/v1/telegram/session/need-otp:
     post:
       tags:
         - Telegram
@@ -59,7 +59,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/telegram/code:
+  /api/v1/telegram/session/code:
     post:
       tags:
         - Telegram
