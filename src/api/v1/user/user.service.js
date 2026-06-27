@@ -13,6 +13,7 @@ class UserService {
             throw new Error(`can't query users using ${Object.keys(userUniqueData) ?? 'no'} field`);
         if (!user) throw new Error(`user ${userUniqueData.email ?? userUniqueData.id} not found`);
         delete user.telegram_session;
+        delete user.password;
         return user;
     }
 }

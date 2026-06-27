@@ -10,7 +10,8 @@
     "#lib/*": "./src/lib/*",
     "#src/*": "./src/*",
     "#modules/*": "./src/api/v1/*",
-    "#servers/*": "./src/servers/*"
+    "#servers/*": "./src/servers/*",
+    "#db/*": "./src/db"
   },
   "scripts": {
     "dev": "nodemon src/index.js",
