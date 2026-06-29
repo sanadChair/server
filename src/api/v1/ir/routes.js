@@ -20,9 +20,6 @@ export const IRRouter = {
             dto: getDeviceDto,
             controller: IRController.getDevice,
             middlewares: [],
-            response: {
-                200: '',
-            },
         },
         {
             name: 'get all devices',
@@ -32,9 +29,6 @@ export const IRRouter = {
             dto: getAllDevicesDto,
             controller: IRController.getAllDevices,
             middlewares: [],
-            response: {
-                200: '',
-            },
         },
         {
             name: 'create device',
@@ -44,9 +38,6 @@ export const IRRouter = {
             dto: createDeviceDto,
             controller: IRController.createDevice,
             middlewares: [],
-            response: {
-                200: '',
-            },
         },
         {
             name: 'delete device',
@@ -56,9 +47,6 @@ export const IRRouter = {
             dto: deleteDeviceDto,
             controller: IRController.deleteDevice,
             middlewares: [],
-            response: {
-                200: '',
-            },
         },
         {
             name: 'update device keys',
@@ -68,17 +56,14 @@ export const IRRouter = {
             dto: updateDeviceKeysDto,
             controller: IRController.updateDeviceKeys,
             middlewares: [],
-            response: {
-                200: '',
-            },
         },
         {
             name: 'detect key',
             description: 'use ros side to detect the ir code using the device',
-            method: 'POST', 
+            method: 'POST',
             path: '/device/keys',
             dto: listenToKey,
-            controller: IRController.
+            controller: IRController.listenToKeys,
         },
     ],
 };
