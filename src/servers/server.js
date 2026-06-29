@@ -7,9 +7,7 @@ import express from 'express';
 
 export default class Server {
     constructor() {
-        if (!fs.existsSync(process.env.IRDB_PATH || './irdb')) {
-            logger.error('IRDB folder not found. Run: npm run setup:irdb');
-        }
+
         if (Server.instance) return Server.instance;
         this.app = new express();
         this.httpServer = createServer(this.app);
