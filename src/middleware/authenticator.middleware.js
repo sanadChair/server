@@ -20,6 +20,7 @@ export function Authenticator(req, res, next) {
         const user = dbRepositories.user.findOne({ where: { id: req.body.id } });
 
         if (user && req.get('x-dev-user')) {
+            console.log(`this is an errorو ${req.get('x-dev-user')}`)
             return next();
         }
 

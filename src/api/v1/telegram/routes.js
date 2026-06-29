@@ -19,6 +19,7 @@ export const TelegramRouter = {
             path: '/session/start',
             controller: TelegramController.startSession,
             dto: StartTelegramSession,
+            protected: true,
             middlewares: [],
         },
         {
@@ -28,7 +29,6 @@ export const TelegramRouter = {
             path: '/session/needs-otp',
             controller: TelegramController.needsOTP,
             dto: NeedTelegramOtp,
-            authenticated: true,
             middlewares: [],
         },
         {
@@ -38,6 +38,7 @@ export const TelegramRouter = {
             path: '/chat/groups',
             controller: TelegramController.getGroups,
             dto: GetTelegramChats,
+            protected: true,
             middlewares: [],
         },
         {
@@ -47,6 +48,7 @@ export const TelegramRouter = {
             path: '/chat/users',
             controller: TelegramController.getUsers,
             dto: GetTelegramChats,
+            protected: true,
             middlewares: [],
         },
         {
@@ -56,6 +58,7 @@ export const TelegramRouter = {
             path: '/chat/messages',
             controller: TelegramController.getMessages,
             dto: GetTelegramMessages,
+            protected: true,
             middlewares: [],
         },
         {
@@ -65,6 +68,7 @@ export const TelegramRouter = {
             path: '/chat/send',
             controller: TelegramController.sendMessage,
             dto: SendTelegramMessage,
+            protected: true,
             middlewares: [],
         },
         {
@@ -74,7 +78,7 @@ export const TelegramRouter = {
             path: '/session/code',
             controller: TelegramController.postCode,
             dto: PostTelegramCode,
-            authenticated: true,
+            protected: true,
             middlewares: [],
         },
     ],

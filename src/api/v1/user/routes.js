@@ -12,6 +12,7 @@ export const UserRouter = {
             path: '/',
             controller: UserController.getUser,
             dto: getUserDto,
+            protected: true,
             middlewares: [],
         },
         {
@@ -23,6 +24,5 @@ export const UserRouter = {
             dto: createUserDto,
             middlewares: [],
         },
-				
     ],
 };

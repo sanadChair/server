@@ -91,7 +91,7 @@ export default class ExpressServer {
         if (route.dto) {
             middlewares.push(dataValidation(route.dto));
         }
-        if (route.authenticated) {
+        if (route.protected) {
             middlewares.push(Authenticator);
         }
         if (route.middlewares) {

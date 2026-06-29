@@ -1,43 +1,56 @@
 
-# ROS Logging Guide
+# Logging Guide
 
 ## Purpose
-Show consistent logging for ROS connection and topic handlers.
+Keep logs consistent across server bootstrap, HTTP routes, Socket.IO callbacks, and ROS handlers.
 
 ---
 
-## Structure
+## Logger
 
-### 1. Connection Handler (`connection.js`)
+Use the shared logger from `src/utils/logger.js`.
+
+```js
+import logger from '#utils/logger.js';
+```
+
+Avoid `console.log` in application code.
+
+---
+
+## ROS Connection Logs
+
+`src/lib/ros/connection.js` owns the rosbridge connection and emits reconnect events for ROS handlers.
 
 ```text
 [ROS-CONNECTION] Connected to rosbridge at ws://localhost:9090
-[ROS-CONNECTION] Connection closed
-[ROS-CONNECTION] Error: <error message>
-[ROS-CONNECTION] Retrying in 3s
-````
+[ROS-CONNECTION] ROS error: <error message>
+[ROS-CONNECTION] Connection to rosbridge closed
+[ROS-CONNECTION] Failed to connect to rosbridge
+[ROS-CONNECTION] Retrying in 2s
+```
 
-### 2. Topic Handlers (`ServoMotor`, etc.)
+---
+
+## Component Logs
+
+Prefix logs with the component or module name:
 
 ```text
-[ServoMotor] Initializing topic handler
-[ServoMotor] Topic created: /servo_angle (std_msgs/UInt8)
-[ServoMotor] Published angle: 90
-[ServoMotor] ROS not connected, message skipped
-[ServoMotor] Reconnected, topic reinitialized
+[SmartHome ROS TOPIC] Topic created: /SmartHome/DeviceEvents
+[IRROSService] ROS reconnected, refreshing subscription...
+[Telegram ROS service] Failed to get messages: <message>
+[EXPRESS SERVER] initializing: GET /smart-home/devices
 ```
 
 ---
 
 ## Conventions
 
-* Always prefix logs with `[Component]` (module or class name)
-* Use proper log levels:
-
-  * `info` → normal operations
-  * `warn` → recoverable issues
-  * `error` → critical problems
-* Log concise, single-line messages
-* Include relevant data (topic, payload) in message
-
-```
+- Always prefix logs with `[Component]`.
+- Use `info` for normal startup and successful operational events.
+- Use `warn` for recoverable failures or rejected input.
+- Use `error` for critical failures.
+- Keep log messages concise and single-line.
+- Include relevant IDs, route names, topic names, or service names.
+- Avoid logging secrets, Telegram session strings, OTP codes, or auth tokens.

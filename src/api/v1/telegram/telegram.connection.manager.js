@@ -52,10 +52,16 @@ class TelegramConnectionManager {
             return this.clients[user.id];
         }
         if (user.telegram_session) {
-            const client = this.createClient(user.telegram_session);
-            await client.connect();
-            this.clients[user.id] = client;
-            return client;
+            try {
+                const client = this.createClient(user.telegram_session);
+                await client.connect();
+                this.clients[user.id] = client;
+                return client;
+            } catch (err) {
+                console.log(
+                    `[telegram connection] warning, the connection string inside the db isn't valid, trying to reauthenticate`
+                );
+            }
         }
         return await this.createTelegramSession(user);
     }
@@ -67,7 +73,16 @@ class TelegramConnectionManager {
             phoneNumber: async () => user.telegram_number,
             phoneCode: async () => {
                 const pendingSession = OTPManager.addPendingSession(user.telegram_number);
-                return await pendingSession.pendingOtp;
+                const rejectCountDown = setTimeout(() => {
+                    OTPManager.rejectOtpCode(user.telegram_number, 'timeout');
+                    OTPManager.rejectPendingSession(user.telegram_number, 'timeout');
+                }, 60_000);
+                try {
+                    const otp = await pendingSession.pendingOtp;
+                    return otp;
+                } finally {
+                    clearTimeout(rejectCountDown);
+                }
             },
             onError: err => {
                 OTPManager.rejectPendingSession(user.telegram_number, err);
