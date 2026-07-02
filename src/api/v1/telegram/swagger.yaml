@@ -29,7 +29,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/StringResponse'
 
-  /api/v1/telegram/session/need-otp:
+  /api/v1/telegram/session/needs-otp:
     post:
       tags:
         - Telegram
@@ -90,7 +90,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/telegram/chat/groups:
-    get:
+    post:
       tags:
         - Telegram
       summary: Get Telegram group dialogs
@@ -110,7 +110,7 @@ paths:
                 $ref: '#/components/schemas/DialogListResponse'
 
   /api/v1/telegram/chat/users:
-    get:
+    post:
       tags:
         - Telegram
       summary: Get Telegram user dialogs
@@ -130,7 +130,7 @@ paths:
                 $ref: '#/components/schemas/DialogListResponse'
 
   /api/v1/telegram/chat/messages:
-    get:
+    post:
       tags:
         - Telegram
       summary: Get Telegram chat messages

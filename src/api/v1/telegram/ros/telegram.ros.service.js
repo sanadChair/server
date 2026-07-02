@@ -21,7 +21,8 @@ const mapToRosDialog = (dialog = {}) => ({
     type:
         (Boolean(dialog.isUser) && 'user') ||
         (Boolean(dialog.isGroup) && 'group') ||
-        (Boolean(dialog.isChannel) && 'channel'),
+        (Boolean(dialog.isChannel) && 'channel') ||
+        'unknown',
     archived: Boolean(dialog.archived),
     pinned: Boolean(dialog.pinned),
 });

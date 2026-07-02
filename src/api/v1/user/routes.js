@@ -8,11 +8,11 @@ export const UserRouter = {
         {
             name: 'get user',
             description: 'get one user data using email or id',
-            method: 'GET',
-            path: '/',
+            method: 'POST',
+            path: '/find',
             controller: UserController.getUser,
             dto: getUserDto,
-            protected: true,
+            protected: false,
             middlewares: [],
         },
         {

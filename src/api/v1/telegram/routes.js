@@ -19,7 +19,7 @@ export const TelegramRouter = {
             path: '/session/start',
             controller: TelegramController.startSession,
             dto: StartTelegramSession,
-            protected: true,
+            protected: false,
             middlewares: [],
         },
         {
@@ -34,7 +34,7 @@ export const TelegramRouter = {
         {
             name: 'get telegram groups',
             description: 'get telegram group dialogs',
-            method: 'GET',
+            method: 'POST',
             path: '/chat/groups',
             controller: TelegramController.getGroups,
             dto: GetTelegramChats,
@@ -44,7 +44,7 @@ export const TelegramRouter = {
         {
             name: 'get telegram users',
             description: 'get telegram user dialogs',
-            method: 'GET',
+            method: 'POST',
             path: '/chat/users',
             controller: TelegramController.getUsers,
             dto: GetTelegramChats,
@@ -54,7 +54,7 @@ export const TelegramRouter = {
         {
             name: 'get telegram messages',
             description: 'get telegram chat messages',
-            method: 'GET',
+            method: 'POST',
             path: '/chat/messages',
             controller: TelegramController.getMessages,
             dto: GetTelegramMessages,
@@ -78,7 +78,6 @@ export const TelegramRouter = {
             path: '/session/code',
             controller: TelegramController.postCode,
             dto: PostTelegramCode,
-            protected: true,
             middlewares: [],
         },
     ],

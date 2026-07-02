@@ -9,12 +9,12 @@ tags:
     description: User creation and lookup.
 
 paths:
-  /api/v1/user:
-    get:
+  /api/v1/user/find:
+    post:
       tags:
         - User
-      summary: Get user by email
-      description: Runtime currently reads the email from the request body.
+      summary: Get user by id or email
+      description: Returns user data (excludes password and telegram_session). Accepts either id or email.
       requestBody:
         required: true
         content:
@@ -34,11 +34,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/user:
     post:
       tags:
         - User
       summary: Create user
-      description: Creates a new user. Email is unique.
+      description: Creates a new user. Email is unique. Password must be at least 8 characters.
       requestBody:
         required: true
         content:
@@ -63,9 +65,13 @@ components:
   schemas:
     GetUserRequest:
       type: object
-      required:
-        - email
+      description: Provide either id or email.
       properties:
+        id:
+          oneOf:
+            - type: integer
+            - type: string
+          example: 1
         email:
           type: string
           format: email
@@ -111,9 +117,6 @@ components:
           type: string
           format: email
           example: user@example.com
-        password:
-          type: string
-          example: secret
         is_dev_user:
           type: boolean
           example: true

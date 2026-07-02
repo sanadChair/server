@@ -38,6 +38,7 @@
   },
   "homepage": "https://github.com/sanadChair/server#readme",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "better-sql": "^1.0.5",
     "broadcast-address": "^1.0.2",
     "cors": "^2.8.5",

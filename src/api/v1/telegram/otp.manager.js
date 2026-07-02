@@ -42,16 +42,20 @@ export class OTPManager {
 
     static rejectOtpCode(phoneNumber, err) {
         const pendingSession = this.getPendingSession(phoneNumber);
-        pendingSession.codeResolver.reject(err);
+        const error = err instanceof Error ? err : new Error(String(err));
+        pendingSession.codeResolver.reject(error);
     }
 
     static resolvePendingSession(phoneNumber, session) {
         const pendingSession = this.getPendingSession(phoneNumber);
         pendingSession.sessionSuccessResolver.resolve(session);
+        delete this.pendingSessions[phoneNumber];
     }
 
     static rejectPendingSession(phoneNumber, err) {
         const pendingSession = this.getPendingSession(phoneNumber);
-        pendingSession.sessionSuccessResolver.reject(err);
+        const error = err instanceof Error ? err : new Error(String(err));
+        pendingSession.sessionSuccessResolver.reject(error);
+        delete this.pendingSessions[phoneNumber];
     }
 }

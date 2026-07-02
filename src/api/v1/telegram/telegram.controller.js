@@ -1,4 +1,4 @@
-import { OTPManager } from './OTPManager.js';
+import { OTPManager } from './otp.manager.js';
 import { telegramConnectionManager } from './telegram.connection.manager.js';
 import { telegramManager } from './telegram.manager.js';
 
@@ -10,7 +10,11 @@ export class TelegramController {
         const { phoneNumber, otp } = req.body;
         const pendingSession = OTPManager.getPendingSession(phoneNumber);
         OTPManager.resolveOtpCode(phoneNumber, otp);
-        await pendingSession.pendingSession;
+        try {
+            await pendingSession.pendingSession;
+        } catch (err) {
+            throw new Error(`Telegram session failed: ${err.message}`);
+        }
         return 'session connected';
     }
 

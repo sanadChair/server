@@ -8,7 +8,7 @@ class AppError extends Error {
     }
 }
 
-export function Authenticator(req, res, next) {
+export async function Authenticator(req, res, next) {
     try {
         if (!req.body.id) {
             throw new AppError(
@@ -17,10 +17,10 @@ export function Authenticator(req, res, next) {
             );
         }
 
-        const user = dbRepositories.user.findOne({ where: { id: req.body.id } });
+        const user = await dbRepositories.user.findOne({ where: { id: req.body.id } });
 
         if (user && req.get('x-dev-user')) {
-            console.log(`this is an errorو ${req.get('x-dev-user')}`)
+            console.log(`[Authenticator] dev bypass for user ${req.body.id}`);
             return next();
         }
 
