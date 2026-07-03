@@ -1,13 +1,12 @@
 import dgram from 'dgram';
 import process from 'process';
-import fs from 'fs';
 import logger from '../../utils/logger.js';
+import { mockSmartHomeDeviceStore } from './device-store.js';
 
 const PORT = process.env.BROADCAST_SMART_DEVICE_PORT || 9988;
 class MockDeviceDiscovery {
     constructor() {
         this.client = dgram.createSocket({ type: 'udp4', reuseAddr: true });
-        this.__config();
         this.__startListening();
         this.__attachResponseCallback();
         this.client.bind(PORT, () => {
@@ -15,9 +14,8 @@ class MockDeviceDiscovery {
         });
     }
 
-    __config() {
-        const devices = fs.readFileSync('./src/mocks/smart-home/smart-dev.json');
-        this.specs = JSON.parse(devices);
+    get specs() {
+        return mockSmartHomeDeviceStore.getAllDevices();
     }
 
     __startListening() {
@@ -28,7 +26,7 @@ class MockDeviceDiscovery {
     }
 
     __attachResponseCallback() {
-        this.client.on('message', (msg, rinfo) => {
+        this.client.on('message', async (msg, rinfo) => {
             logger.info(
                 `[MOCK-DEVICE-DISCOVERY] recieved a message from: ${rinfo.address}:${rinfo.port} ${msg.toString()}`
             );
@@ -41,15 +39,19 @@ class MockDeviceDiscovery {
 
             if (payload?.type !== 'discovery') return;
 
-            const response = Buffer.from(
-                JSON.stringify({
-                    type: 'discovery:response',
-                    requestId: payload.requestId,
-                    ...this.specs,
-                })
-            );
+            const devices = await mockSmartHomeDeviceStore.refreshFromDb();
 
-            this.client.send(response, 0, response.length, payload.port, rinfo.address);
+            for (const device of Object.values(devices)) {
+                const response = Buffer.from(
+                    JSON.stringify({
+                        type: 'discovery:response',
+                        requestId: payload.requestId,
+                        ...device,
+                    })
+                );
+
+                this.client.send(response, 0, response.length, payload.port || rinfo.port, rinfo.address);
+            }
         });
     }
 }

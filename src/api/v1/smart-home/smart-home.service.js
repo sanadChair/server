@@ -44,18 +44,33 @@ class SmartHomeService {
         }
     }
 
+    async addIptToInMemoryDevices(discoveredDevices) {
+        const devices = smartHomeDevicesDB.getAllDevices();
+        for (const [id, discoveredDevice] of Object.entries(discoveredDevices)) {
+            if (!devices[id]) continue;
+
+            devices[id].ip = discoveredDevice.ip;
+            if (discoveredDevice.port !== undefined) {
+                devices[id].port = discoveredDevice.port;
+            }
+        }
+    }
+
     async discoverDevices(timeoutMs = 400) {
         const discoveredDevices = await localDiscovery.discoverDevices(timeoutMs);
         await this.discoverNewDevice(discoveredDevices);
         // Detect disconnected devices
+        // console.log(discoveredDevices);
         await this.discoverDeletedDevices(discoveredDevices);
+        await this.addIptToInMemoryDevices(discoveredDevices);
         return smartHomeDevicesDB.getAllDevices();
     }
 
     async getDevInfo(id) {
         const device = smartHomeDevicesDB.getDevice(id);
-        if (!device)
-            throw new Error(`device doesn't currently exist on the network`);
+        if (!device) throw new Error(`device doesn't currently exist on the network`);
+
+        console.log(device);
         const response = await fetch(`http://${device.ip}:${SMART_DEV_PORT}/info?id=${id}`);
         const data = await response.json();
         return { ...device, ...data };
@@ -105,7 +120,9 @@ class SmartHomeService {
         const device_id = device.deviceId ?? device.id;
         if (smartHomeDevicesDB.hasDevice(device_id)) {
             logger.warn(`[SMART HOME] device ${device_id} already exist`);
-            throw new Error(`trying to register a device that already exists device ID: ${device_id}`);
+            throw new Error(
+                `trying to register a device that already exists device ID: ${device_id}`
+            );
         }
         this.validateState(device.state, device.control_type);
         const savedDevice = await smartHomeDevicesDB.saveDevice(device, room);

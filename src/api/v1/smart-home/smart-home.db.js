@@ -33,8 +33,8 @@ class SmartHomeDevicesDB {
     getAllDevices() {
         if (this.devices) {
             return this.devices;
-        } 
-        throw new Error(`devices DB wasnt initialized yet try restarting the server`)
+        }
+        throw new Error(`devices DB wasnt initialized yet try restarting the server`);
     }
 
     getDevice(id) {
@@ -145,12 +145,12 @@ class SmartHomeDevicesDB {
         const updateData = {};
         if (device.connected !== undefined) updateData.connected = Boolean(device.connected);
         if (device.name !== undefined) updateData.name = device.name;
-        if (device.control_type !== undefined) {
-            updateData.control_type = device.control_type;
-        }
+        if (device.control_type !== undefined) updateData.control_type = device.control_type;
 
         const hasRoomUpdate =
-            device.room !== undefined || device.roomId !== undefined || device.roomName !== undefined;
+            device.room !== undefined ||
+            device.roomId !== undefined ||
+            device.roomName !== undefined;
 
         if (hasRoomUpdate) {
             const dbroom = await this.resolveRoom(

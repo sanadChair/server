@@ -5,15 +5,26 @@ import bodyParser from 'body-parser';
 import logger from '../../utils/logger.js';
 import { mockDeviceDiscovery } from './discovery.js';
 import mockSmartHomeRouter from './routes.js';
+import { mockSmartHomeDeviceStore } from './device-store.js';
 
 const PORT = process.env.SMART_DEV_PORT || 19803 ;
 const app = express();
 
-logger.info(`loaded device data: ${JSON.stringify(mockDeviceDiscovery.specs)}`);
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(bodyParser.json());
 app.use(mockSmartHomeRouter);
 
-app.listen(PORT, () => {
-    logger.info(`[MOCK SMARTHOME SERVER]: server starting at port ${PORT}`);
+mockSmartHomeDeviceStore.init().then(devices => {
+    logger.info(`loaded device data: ${JSON.stringify(devices)}`);
+    logger.info(`loaded discovery data: ${JSON.stringify(mockDeviceDiscovery.specs)}`);
+
+    app.listen(PORT, err => {
+        if (err) {
+            logger.error(`[MOCK SMARTHOME SERVER]: failed to listen on port ${PORT}: ${err.message}`);
+            process.exitCode = 1;
+            return;
+        }
+
+        logger.info(`[MOCK SMARTHOME SERVER]: server starting at port ${PORT}`);
+    });
 });

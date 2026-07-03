@@ -1,6 +1,42 @@
 {
-  "deviceId": "light-a3f9c1",
-  "control_type": "binary",
-  "state": 1,
-  "port": "19803"
+  "source": "database.sqlite",
+  "updated_at": "2026-07-03T11:13:40.287Z",
+  "devices": {
+    "lights-2": {
+      "deviceId": "lights-2",
+      "id": "lights-2",
+      "name": "kitchen-lights",
+      "control_type": "binary",
+      "state": 1,
+      "connected": true,
+      "port": 80
+    },
+    "lights-3": {
+      "deviceId": "lights-3",
+      "id": "lights-3",
+      "name": "kitchen-lights-3",
+      "control_type": "binary",
+      "state": 1,
+      "connected": true,
+      "port": 80
+    },
+    "lights-4": {
+      "deviceId": "lights-4",
+      "id": "lights-4",
+      "name": "kitchen-lights-5",
+      "control_type": "binary",
+      "state": 1,
+      "connected": true,
+      "port": 80
+    },
+    "lights-6": {
+      "deviceId": "lights-6",
+      "id": "lights-6",
+      "name": "kitchen-lights-6",
+      "control_type": "binary",
+      "state": 1,
+      "connected": true,
+      "port": 80
+    }
+  }
 }
