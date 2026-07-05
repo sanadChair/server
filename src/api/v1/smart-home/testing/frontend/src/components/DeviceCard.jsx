@@ -3,9 +3,9 @@ import { smartHomeApi } from '../api/client';
 import { Trash2, MapPin, Activity } from 'lucide-react';
 
 const DeviceCard = ({ device, onStateChange, onDelete }) => {
-    const { deviceId, name, position, control_type, state, connectionState } = device;
+    const { deviceId, name, position, control_type, state, connected } = device;
     const isActive = Number(state) === 1;
-    const isConnected = Boolean(connectionState);
+    const isConnected = Boolean(connected);
 
     const toggleState = async () => {
         if (!isConnected) return;
@@ -62,19 +62,42 @@ const DeviceCard = ({ device, onStateChange, onDelete }) => {
 
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                    {!isConnected ? 'Disconnected' : isActive ? 'Operating' : 'Standby'}
+                    {!isConnected ? 'Disconnected' : ['slider', 'dimmer', 'range'].includes(control_type?.toLowerCase()) ? 'Operating' : isActive ? 'Operating' : 'Standby'}
                 </span>
                 
-                {/* iOS Style Toggle Switch */}
-                <button 
-                  onClick={toggleState}
-                  disabled={!isConnected}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
-                      !isConnected ? 'bg-slate-100 opacity-60 cursor-not-allowed' : isActive ? 'bg-indigo-600' : 'bg-slate-200'
-                  }`}
-                >
-                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${isActive ? 'translate-x-6' : 'translate-x-[4px]'}`} />
-                </button>
+                {/* iOS Style Toggle Switch for binary, range slider for slider/dimmer/range */}
+                {['slider', 'dimmer', 'range'].includes(control_type?.toLowerCase()) ? (
+                    <div className="flex items-center gap-2 w-1/2">
+                        <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={state}
+                            disabled={!isConnected}
+                            onChange={async (e) => {
+                                const val = Number(e.target.value);
+                                try {
+                                    await smartHomeApi.controlDevice(deviceId, val);
+                                    if (onStateChange) onStateChange(deviceId, val);
+                                } catch (error) {
+                                    console.error('Failed to change state', error);
+                                }
+                            }}
+                            className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                        <span className="text-xs font-semibold text-slate-500 w-8 text-right">{state}</span>
+                    </div>
+                ) : (
+                    <button 
+                      onClick={toggleState}
+                      disabled={!isConnected}
+                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
+                          !isConnected ? 'bg-slate-100 opacity-60 cursor-not-allowed' : isActive ? 'bg-indigo-600' : 'bg-slate-200'
+                      }`}
+                    >
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${isActive ? 'translate-x-6' : 'translate-x-[4px]'}`} />
+                    </button>
+                )}
             </div>
         </div>
     );

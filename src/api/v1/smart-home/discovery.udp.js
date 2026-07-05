@@ -46,6 +46,7 @@ class LocalDiscovery {
                 control_type: payload.control_type,
                 state: payload.state,
                 ip: rinfo.address || payload.ip,
+                port: payload.port,
             };
         });
     }

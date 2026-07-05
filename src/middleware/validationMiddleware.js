@@ -10,7 +10,8 @@ export function dataValidation(SchemaObject) {
             next();
         } catch (error) {
             if (error instanceof ZodError) {
-                const message = error.errors.map(issue => ({
+                const issues = error.issues || error.errors || [];
+                const message = issues.map(issue => ({
                     message: `${issue.path.join('.')} is ${issue.message}`,
                 }));
                 return res.status(StatusCodes.BAD_REQUEST).json({

@@ -71,15 +71,31 @@ class SmartHomeService {
         if (!device) throw new Error(`device doesn't currently exist on the network`);
 
         console.log(device);
-        const response = await fetch(`http://${device.ip}:${SMART_DEV_PORT}/info?id=${id}`);
-        const data = await response.json();
-        return { ...device, ...data };
+        try {
+            const port = device.port || SMART_DEV_PORT || 80;
+            const response = await fetch(`http://${device.ip}:${port}/info?id=${id}`);
+            const data = await response.json();
+            return { ...device, ...data };
+        } catch (err) {
+            logger.warn(`[SMART HOME] Failed to fetch info from device ${id}: ${err.message}`);
+            return device;
+        }
     }
 
     validateState(state, control_type) {
-        switch (control_type) {
+        const type = String(control_type || 'binary').split(':')[0];
+        switch (type) {
             case 'binary':
                 if (Number(state) === 0 || Number(state) === 1) return Number(state);
+                else
+                    throw new Error(
+                        `state: ${state} doesn't match device control_type: ${control_type}`
+                    );
+            case 'dimmer':
+            case 'slider':
+            case 'range':
+                const num = Number(state);
+                if (!isNaN(num) && num >= 0 && num <= 100) return num;
                 else
                     throw new Error(
                         `state: ${state} doesn't match device control_type: ${control_type}`
@@ -94,13 +110,18 @@ class SmartHomeService {
         if (!device) return false;
 
         state = this.validateState(state, device.control_type);
-        await fetch(`http://${device.ip}:${SMART_DEV_PORT}/control`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ state, id }),
-        });
+        try {
+            const port = device.port || SMART_DEV_PORT || 80;
+            await fetch(`http://${device.ip}:${port}/control`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ state, id }),
+            });
+        } catch (err) {
+            logger.warn(`[SMART HOME] Failed to send control to device ${id}: ${err.message}`);
+        }
 
         const updatedDevice = await smartHomeDevicesDB.updateDeviceState(id, state);
 
@@ -137,16 +158,21 @@ class SmartHomeService {
             throw new Error(`trying to update a device that doesn't exit ${device.id}`);
         }
         if (device.name) {
-            await fetch(`http://${existingDevice.ip}:${SMART_DEV_PORT}/name`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    id: device.id,
-                    name: device.name,
-                }),
-            });
+            try {
+                const port = existingDevice.port || SMART_DEV_PORT || 80;
+                await fetch(`http://${existingDevice.ip}:${port}/name`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        id: device.id,
+                        name: device.name,
+                    }),
+                });
+            } catch (err) {
+                logger.warn(`[SMART HOME] Failed to update name on device ${device.id}: ${err.message}`);
+            }
         }
         const updatedDevice = await smartHomeDevicesDB.updateDeviceInfo(device);
         smartHomeRosTopic.publishDeviceEvent('UPDATE', updatedDevice);
@@ -161,8 +187,9 @@ class SmartHomeService {
         }
 
         try {
+            const port = device.port || SMART_DEV_PORT || 80;
             const response = await fetch(
-                `http://${device.ip}:${SMART_DEV_PORT}/factoryReset?id=${id}`,
+                `http://${device.ip}:${port}/factoryReset?id=${id}`,
                 {
                     method: 'DELETE',
                 }

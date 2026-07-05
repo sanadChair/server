@@ -18,13 +18,12 @@ mockSmartHomeDeviceStore.init().then(devices => {
     logger.info(`loaded device data: ${JSON.stringify(devices)}`);
     logger.info(`loaded discovery data: ${JSON.stringify(mockDeviceDiscovery.specs)}`);
 
-    app.listen(PORT, err => {
-        if (err) {
-            logger.error(`[MOCK SMARTHOME SERVER]: failed to listen on port ${PORT}: ${err.message}`);
-            process.exitCode = 1;
-            return;
-        }
-
+    const server = app.listen(PORT, () => {
         logger.info(`[MOCK SMARTHOME SERVER]: server starting at port ${PORT}`);
+    });
+
+    server.on('error', err => {
+        logger.error(`[MOCK SMARTHOME SERVER]: failed to listen on port ${PORT}: ${err.message}`);
+        process.exit(1);
     });
 });

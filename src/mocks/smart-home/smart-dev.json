@@ -1,38 +1,29 @@
 {
   "source": "database.sqlite",
-  "updated_at": "2026-07-03T11:16:04.436Z",
+  "updated_at": "2026-07-03T12:15:41.116Z",
   "devices": {
-    "lights-2": {
-      "deviceId": "lights-2",
-      "id": "lights-2",
-      "name": "kitchen-lights",
+    "light-a3f9c1": {
+      "deviceId": "light-a3f9c1",
+      "id": "light-a3f9c1",
+      "name": "Living Room Light",
       "control_type": "binary",
-      "state": 1,
+      "state": 0,
       "connected": true,
       "port": 80
     },
-    "lights-3": {
-      "deviceId": "lights-3",
-      "id": "lights-3",
-      "name": "kitchen-lights-3",
+    "socket-b2c4d6": {
+      "deviceId": "socket-b2c4d6",
+      "id": "socket-b2c4d6",
+      "name": "Smart Socket",
       "control_type": "binary",
-      "state": 1,
+      "state": 0,
       "connected": true,
       "port": 80
     },
-    "lights-4": {
-      "deviceId": "lights-4",
-      "id": "lights-4",
-      "name": "kitchen-lights-5",
-      "control_type": "binary",
-      "state": 1,
-      "connected": true,
-      "port": 80
-    },
-    "lights-6": {
-      "deviceId": "lights-6",
-      "id": "lights-6",
-      "name": "kitchen-lights-6",
+    "fan-c3d5e7": {
+      "deviceId": "fan-c3d5e7",
+      "id": "fan-c3d5e7",
+      "name": "Bedroom Fan",
       "control_type": "binary",
       "state": 1,
       "connected": true,

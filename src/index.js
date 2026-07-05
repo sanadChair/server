@@ -8,6 +8,7 @@ import { ServiceRegistry } from './servers/registry.js';
 import { AppDataSource } from './db/datasources.js';
 
 dotenv.config();
+// Trigger nodemon reload for .env changes
 
 const PORT = process.env.SERVER_PORT || 5051;
 const HOST = process.env.SERVER_HOSTNAME || 'localhost';
