@@ -1,4 +1,5 @@
 import { irdb } from './ir.db.js';
+import irInputManager from './ir.input.manager.js';
 
 export class IRService {
     static async getDevice(deviceName) {
@@ -17,6 +18,10 @@ export class IRService {
         return await irdb.createDevice(device);
     }
 
+    static async createDeviceFromROS(device) {
+        return await irdb.createDevice(device);
+    }
+
     static async deleteDevice(deviceName) {
         return await irdb.deleteDevice(deviceName);
     }
@@ -31,9 +36,23 @@ export class IRService {
         return await irdb.updateKeys(deviceName, fullKeys);
     }
 
-    static async listenToKeys(deviceName, keyName) {
+    static async replaceDeviceKeys(deviceName, keys) {
         const dev = await irdb.getDeviceByName(deviceName);
-				if (!dev) throw new Error(`no existing device with name: ${deviceName}`);
-				ros
+        if (!dev) throw new Error(`couldn't find a device with name: ${deviceName}`);
+        return await irdb.updateKeys(deviceName, keys || {});
+    }
+
+    static async listenToKeys(deviceName, keyName, timeoutMs = 60000) {
+        const dev = await irdb.getDeviceByName(deviceName);
+        if (!dev) throw new Error(`no existing device with name: ${deviceName}`);
+
+        const hexCode = await irInputManager.waitForKey(timeoutMs);
+        const keys = {
+            ...(dev.keys || {}),
+            [keyName]: hexCode,
+        };
+
+        await irdb.updateKeys(deviceName, keys);
+        return { deviceName, keyName, hexCode };
     }
 }

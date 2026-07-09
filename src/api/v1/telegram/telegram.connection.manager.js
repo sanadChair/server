@@ -75,11 +75,13 @@ class TelegramConnectionManager {
                 const pendingSession = OTPManager.addPendingSession(user.telegram_number);
                 const rejectCountDown = setTimeout(() => {
                     OTPManager.rejectOtpCode(user.telegram_number, 'timeout');
-                    OTPManager.rejectPendingSession(user.telegram_number, 'timeout');
                 }, 60_000);
                 try {
                     const otp = await pendingSession.pendingOtp;
                     return otp;
+                }catch (err) {
+                    console.log(rejectCountDown)
+                    throw new Error(err)
                 } finally {
                     clearTimeout(rejectCountDown);
                 }

@@ -14,6 +14,7 @@ export class OTPManager {
         const pendingSession = new Promise((resolve, reject) => {
             sessionSuccessResolver = { resolve, reject };
         });
+        pendingSession.catch(() => {});
         this.pendingSessions[phoneNumber] = {
             pendingOtp,
             pendingSession,

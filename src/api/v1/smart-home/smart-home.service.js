@@ -19,8 +19,8 @@ class SmartHomeService {
                 continue;
             }
 
-            // Existing device: merge discovery data without overwriting stored metadata like position.
             await smartHomeDevicesDB.updateDeviceInfo({
+                ...device,
                 id,
                 connected: true,
             });
@@ -44,35 +44,24 @@ class SmartHomeService {
         }
     }
 
-    async addIptToInMemoryDevices(discoveredDevices) {
-        const devices = smartHomeDevicesDB.getAllDevices();
-        for (const [id, discoveredDevice] of Object.entries(discoveredDevices)) {
-            if (!devices[id]) continue;
-
-            devices[id].ip = discoveredDevice.ip;
-            if (discoveredDevice.port !== undefined) {
-                devices[id].port = discoveredDevice.port;
-            }
-        }
-    }
-
     async discoverDevices(timeoutMs = 400) {
         const discoveredDevices = await localDiscovery.discoverDevices(timeoutMs);
         await this.discoverNewDevice(discoveredDevices);
         // Detect disconnected devices
         // console.log(discoveredDevices);
         await this.discoverDeletedDevices(discoveredDevices);
-        await this.addIptToInMemoryDevices(discoveredDevices);
         return smartHomeDevicesDB.getAllDevices();
     }
 
     async getDevInfo(id) {
         const device = smartHomeDevicesDB.getDevice(id);
         if (!device) throw new Error(`device doesn't currently exist on the network`);
+        if (device.connected === false) throw new Error(`device ${id} isn't connected to network`);
 
         console.log(device);
-        const response = await fetch(`http://${device.ip}:${SMART_DEV_PORT}/info?id=${id}`);
+        const response = await fetch(`http://${device.ip}:${SMART_DEV_PORT}/info?deviceId=${id}`);
         const data = await response.json();
+        if (response.error) throw new Error(`${response.error}`);
         return { ...device, ...data };
     }
 
@@ -92,18 +81,20 @@ class SmartHomeService {
     async controlDev(id, state) {
         const device = smartHomeDevicesDB.getDevice(id);
         if (!device) return false;
+        if (device.connected === false) throw new Error(`device ${id} isn't connected to network`);
 
         state = this.validateState(state, device.control_type);
-        await fetch(`http://${device.ip}:${SMART_DEV_PORT}/control`, {
+        const res = await fetch(`http://${device.ip}:${SMART_DEV_PORT}/control`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ state, id }),
+            body: JSON.stringify({ state, deviceId: id }),
         });
-
+        const data = await res.json();
+        if (data?.error) throw new Error(data?.error);
         const updatedDevice = await smartHomeDevicesDB.updateDeviceState(id, state);
-
+        console.log(updatedDevice);
         smartHomeRosTopic.publishDeviceEvent('UPDATE', updatedDevice);
         return updatedDevice;
     }
@@ -136,18 +127,21 @@ class SmartHomeService {
             logger.warn(`[SMART HOME] device doesn't exist or undefined`);
             throw new Error(`trying to update a device that doesn't exit ${device.id}`);
         }
-        if (device.name) {
-            await fetch(`http://${existingDevice.ip}:${SMART_DEV_PORT}/name`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    id: device.id,
-                    name: device.name,
-                }),
-            });
-        }
+        if (!device.name) throw new Error(`device new name isn't provided`);
+        if (device.connected === false) throw new Error(`device ${id} isn't connected to network`);
+
+        const res = await fetch(`http://${existingDevice.ip}:${SMART_DEV_PORT}/name`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                deviceId: device.id,
+                name: device.name,
+            }),
+        });
+        const data = await res.json();
+        if (data?.error) throw new Error(data?.error);
         const updatedDevice = await smartHomeDevicesDB.updateDeviceInfo(device);
         smartHomeRosTopic.publishDeviceEvent('UPDATE', updatedDevice);
         return updatedDevice;
@@ -160,21 +154,18 @@ class SmartHomeService {
             throw new Error(`trying to delete device that doesn't exist device id: ${id}`);
         }
 
-        try {
-            const response = await fetch(
-                `http://${device.ip}:${SMART_DEV_PORT}/factoryReset?id=${id}`,
-                {
-                    method: 'DELETE',
-                }
-            );
-            logger.info(`[SMART HOME] Factory reset sent to device ${id}: ${response.status}`);
-        } catch (fetchErr) {
-            logger.warn(`[SMART HOME] Failed to send factory reset to device ${id}:`, fetchErr);
-        }
-
+        if (device.connected === false) throw new Error(`device ${id} isn't connected to network`);
+        const res = await fetch(`http://${device.ip}:${SMART_DEV_PORT}/factoryReset?deviceId=${id}`, {
+            method: 'DELETE',
+        });
+        const data = await res.json();
+        if (data?.error) throw new Error(data?.error);
         await smartHomeDevicesDB.deleteDevice(id);
         smartHomeRosTopic.publishDeviceEvent('DISCONNECTED', id);
-        return;
+        return {
+            id: data.deviceId,
+            state: data.state,
+        };
     }
 
     async changeDeviceRoom({ id, roomId }) {

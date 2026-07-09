@@ -1,7 +1,7 @@
 import logger from '#utils/logger.js';
 import { dbRepositories } from '#src/db/db.repositories.js';
 import { AppDataSource } from '#src/db/datasources.js';
-import roomRosTopic from './ros/room.ros.topic.js';
+import { roomManager } from './room.manager.js';
 
 class RoomDB {
     constructor() {
@@ -15,7 +15,7 @@ class RoomDB {
     async initializeDB() {
         try {
             const roomsArr = await this.roomsDb.find({ relations: { devices: true } });
-            this.rooms = {};
+            this.rooms = roomManager.setRooms({});
             for (const room of roomsArr) {
                 this.cacheRoom(room);
             }
@@ -25,7 +25,7 @@ class RoomDB {
                 throw err;
             }
             logger.warn(`[ROOM DB] Failed to read DB, initializing empty: ${err.message}`);
-            this.rooms = {};
+            this.rooms = roomManager.setRooms({});
             return this.rooms;
         }
     }
@@ -48,90 +48,24 @@ class RoomDB {
         return Boolean(this.getRoomById(id));
     }
 
-    cacheDeviceForRoom(device) {
-        if (!device) return device;
-        const { room, ...deviceWithoutRoom } = device;
-        return deviceWithoutRoom;
-    }
-
     cacheRoom(room) {
-        const cachedRoom = {
-            ...room,
-            devices: (room.devices ?? []).map(device => this.cacheDeviceForRoom(device)),
-        };
-        this.rooms[cachedRoom.id] = cachedRoom;
-        return cachedRoom;
-    }
-
-    async refreshRoom(id) {
-        const room = await this.roomsDb.findOne({
-            where: { id },
-            relations: { devices: true },
-        });
-        if (!room) {
-            throw new Error(`room ${id} was not saved`);
-        }
-        return this.cacheRoom(room);
+        return roomManager.cacheRoom(room);
     }
 
     syncDeviceRelation(device, previousRoomId, options = {}) {
-        if (!this.rooms) return;
-
-        const updatedRoomIds = new Set();
-
-        if (previousRoomId && this.rooms[previousRoomId]?.devices) {
-            this.rooms[previousRoomId].devices = this.rooms[previousRoomId].devices.filter(
-                currentDevice => currentDevice.id !== device.id
-            );
-            updatedRoomIds.add(previousRoomId);
-        }
-
-        const roomId = device.room?.id;
-        if (!roomId || !this.rooms[roomId]) {
-            this.publishSyncedRoomEvents(updatedRoomIds, options);
-            return;
-        }
-
-        this.rooms[roomId].devices = this.rooms[roomId].devices || [];
-        const cachedDevice = this.cacheDeviceForRoom(device);
-        const existingIndex = this.rooms[roomId].devices.findIndex(
-            currentDevice => currentDevice.id === device.id
-        );
-
-        if (existingIndex >= 0) {
-            this.rooms[roomId].devices[existingIndex] = cachedDevice;
-        } else {
-            this.rooms[roomId].devices.push(cachedDevice);
-        }
-        updatedRoomIds.add(roomId);
-        this.publishSyncedRoomEvents(updatedRoomIds, options);
+        return roomManager.syncDevice(device, previousRoomId, options);
     }
 
-    publishSyncedRoomEvents(roomIds, options = {}) {
-        if (options.publishRoomEvent === false) return;
-
-        for (const roomId of roomIds) {
-            const room = this.rooms[roomId];
-            if (room) {
-                roomRosTopic.publishRoomEvent('UPDATE', room);
-            }
-        }
+    removeDeviceRelation(deviceId, previousRoomId, options = {}) {
+        return roomManager.removeDevice(deviceId, previousRoomId, options);
     }
 
     async registerRoom(room) {
         this.getAllRooms();
         const roomToSave = { ...room };
-        delete roomToSave.created_at;
-        delete roomToSave.updated_at;
-
+        console.log(roomToSave)
         const savedRoom = await this.roomsDb.save(roomToSave);
-        const saved = await this.refreshRoom(savedRoom.id);
-        if (saved.devices?.length || roomToSave.devices?.length) {
-            const { smartHomeDevicesDB } = await import('../smart-home/smart-home.db.js');
-            await smartHomeDevicesDB.cacheSavedDevices(saved.devices ?? roomToSave.devices, {
-                publishRoomEvent: false,
-            });
-        }
+        const saved = this.cacheRoom(savedRoom);
         logger.info(`[ROOM DB] Saved room: ${saved.id}`);
         return saved;
     }
@@ -144,19 +78,17 @@ class RoomDB {
         delete updateData.created_at;
         delete updateData.updated_at;
 
+        const existingDevices = rooms[id]?.devices ?? [];
         const roomToSave = { ...rooms[id], ...updateData, id };
         if (!updateData.devices) {
             delete roomToSave.devices;
         }
 
-        await this.roomsDb.save(roomToSave);
-        rooms[id] = await this.refreshRoom(id);
-        if (rooms[id]?.devices?.length || updateData.devices?.length) {
-            const { smartHomeDevicesDB } = await import('../smart-home/smart-home.db.js');
-            await smartHomeDevicesDB.cacheSavedDevices(rooms[id]?.devices ?? updateData.devices, {
-                publishRoomEvent: false,
-            });
-        }
+        const savedRoom = await this.roomsDb.save(roomToSave);
+        rooms[id] = this.cacheRoom({
+            ...savedRoom,
+            devices: updateData.devices ?? existingDevices,
+        });
         logger.info(`[ROOM DB] Updated room info: ${id}`);
         return rooms[id];
     }
@@ -165,15 +97,24 @@ class RoomDB {
         const rooms = this.getAllRooms();
         const devices = rooms[id]?.devices ?? [];
         if (devices.length) {
-            await dbRepositories.device.save(devices.map(device => ({ ...device, room: null })));
+            await dbRepositories.device.save(
+                devices.map(device => ({
+                    id: device.id,
+                    name: device.name,
+                    control_type: device.control_type,
+                    connected: device.connected ?? false,
+                    room: null,
+                }))
+            );
         }
         await this.roomsDb.delete({ id });
         delete rooms[id];
         if (devices.length) {
             const { smartHomeDevicesDB } = await import('../smart-home/smart-home.db.js');
-            await smartHomeDevicesDB.cacheSavedDevices(devices, { publishRoomEvent: false });
+            smartHomeDevicesDB.clearRoomForDevices(devices);
         }
         logger.info(`[ROOM DB] Deleted room: ${id}`);
+        return devices;
     }
 }
 

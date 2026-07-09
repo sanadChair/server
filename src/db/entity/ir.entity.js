@@ -1,7 +1,7 @@
 import { EntitySchema } from 'typeorm';
 
 export const IRSchema = new EntitySchema({
-    name: 'rooms',
+    name: 'ir',
     columns: {
         id: {
             type: 'text',

@@ -17,7 +17,10 @@ class SmartHomeDevicesDB {
             const devicesArr = await this.devicesDb.find({ relations: { room: true } });
             this.devices = {};
             for (const dev of devicesArr) {
-                this.devices[dev.id] = dev;
+                this.devices[dev.id] = {
+                    ...dev,
+                    state: 0,
+                };
             }
             return this.devices;
         } catch (err) {
@@ -46,7 +49,7 @@ class SmartHomeDevicesDB {
         return Boolean(this.getDevice(id));
     }
 
-    async resolveRoom(room) {
+    resolveCachedRoom(room) {
         if (!room) return null;
 
         const id = room.id ?? room.roomId;
@@ -54,125 +57,108 @@ class SmartHomeDevicesDB {
 
         if (!id && !name) return null;
 
+        const rooms = roomDB.getAllRooms();
         const dbroom = id
-            ? await dbRepositories.room.findOne({ where: { id } })
-            : await dbRepositories.room.findOne({ where: { name } });
+            ? rooms[id]
+            : Object.values(rooms).find(currentRoom => currentRoom.name === name);
 
         if (!dbroom) {
             throw new Error(`room ${id || name} doesn't exist`);
         }
 
-        if (name && dbroom.name !== name) {
-            throw new Error(`room ${name} doesn't match room id ${id}`);
-        }
-
         return dbroom;
     }
 
-    async refreshDevice(id) {
-        const savedDevice = await this.devicesDb.findOne({
-            where: { id },
-            relations: { room: true },
-        });
-        if (!savedDevice) {
-            throw new Error(`device ${id} was not saved`);
+    toDeviceRecord(device, room) {
+        const record = {
+            id: device.deviceId ?? device.id,
+            name: device.name,
+            control_type: device.control_type ?? device.controlType,
+            connected: device.connected ?? false,
+        };
+
+        if (room !== undefined) {
+            record.room = room ? { id: room.id } : null;
         }
-        this.devices[id] = savedDevice;
-        return savedDevice;
+
+        return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
     }
 
-    async cacheSavedDevices(devices = [], options = {}) {
-        this.getAllDevices();
-        const cachedDevices = [];
+    toMemoryDevice(device, previous = {}, room) {
+        const id = device.deviceId ?? device.id ?? previous.id;
+        const nextRoom = room !== undefined ? room : (device.room ?? previous.room);
 
-        for (const device of devices || []) {
-            const id = device.deviceId ?? device.id;
-            if (!id) continue;
+        const memoryDevice = {
+            ...previous,
+            ...device,
+            id,
+            control_type: device.control_type ?? device.controlType ?? previous.control_type,
+            connected: device.connected ?? previous.connected ?? false,
+            state: device.state ?? previous.state ?? 0,
+            ip: device.ip ?? previous.ip,
+            room: nextRoom ?? null,
+        };
 
-            const previousRoomId = this.devices[id]?.room?.id;
-            const savedDevice = await this.refreshDevice(id);
-            roomDB.syncDeviceRelation(savedDevice, previousRoomId, options);
-            cachedDevices.push(savedDevice);
-        }
+        delete memoryDevice.deviceId;
+        delete memoryDevice.controlType;
+        delete memoryDevice.roomId;
+        delete memoryDevice.roomName;
 
-        if (cachedDevices.length) {
-            logger.info(`[SMART HOME DB] Cached ${cachedDevices.length} saved device(s)`);
-        }
-
-        return cachedDevices;
+        return memoryDevice;
     }
 
     async saveDevice(device, room) {
         const devices = this.getAllDevices();
         const id = device.deviceId ?? device.id;
         const previousRoomId = devices[id]?.room?.id;
-        const dbroom = await this.resolveRoom(
+        const dbroom = this.resolveCachedRoom(
             room ?? {
                 id: device.roomId ?? device.room?.id,
                 name: device.roomName ?? device.room?.name,
             }
         );
-        const fullDevice = {
-            ...device,
-            id,
-            control_type: device.control_type,
-            connected: device.connected ?? false,
-            room: dbroom ? { id: dbroom.id } : undefined,
-        };
 
-        delete fullDevice.deviceId;
-        delete fullDevice.roomId;
-        delete fullDevice.roomName;
-        delete fullDevice.created_at;
-        delete fullDevice.updated_at;
-
-        await this.devicesDb.save(fullDevice);
-        const savedDevice = await this.refreshDevice(id);
+        const record = this.toDeviceRecord(device, dbroom);
+        const savedRecord = await this.devicesDb.save(record);
+        const savedDevice = this.toMemoryDevice(
+            { ...device, ...savedRecord, id },
+            devices[id],
+            dbroom
+        );
+        devices[id] = savedDevice;
         roomDB.syncDeviceRelation(savedDevice, previousRoomId);
         logger.info(`[SMART HOME DB] Saved device: ${id}`);
         return savedDevice;
     }
 
     async updateDeviceInfo(device) {
-        const devices = this.getAllDevices();
         const id = device.deviceId || device.id;
-        if (!devices[id]) {
+        if (!this.devices[id]) {
             logger.error(`[SMART HOME DB] Device ${id} doesn't exist`);
             throw new Error('Device does not exist');
         }
 
-        const previousRoomId = devices[id]?.room?.id;
-        const updateData = {};
-        if (device.connected !== undefined) updateData.connected = Boolean(device.connected);
-        if (device.name !== undefined) updateData.name = device.name;
-        if (device.control_type !== undefined) updateData.control_type = device.control_type;
+        const previousRoomId = this.devices[id]?.room?.id;
+        const update = {};
+        const current = this.devices[id];
+        const controlType = device.control_type ?? device.controlType;
 
-        const hasRoomUpdate =
-            device.room !== undefined ||
-            device.roomId !== undefined ||
-            device.roomName !== undefined;
-
-        if (hasRoomUpdate) {
-            const dbroom = await this.resolveRoom(
-                device.room ?? {
-                    id: device.roomId,
-                    name: device.roomName,
-                }
-            );
-
-            await this.devicesDb.save({
-                ...devices[id],
-                ...updateData,
-                room: dbroom ? { id: dbroom.id } : null,
-            });
-        } else if (Object.keys(updateData).length) {
-            await this.devicesDb.update({ id }, updateData);
+        if (device.name !== undefined && device.name !== current.name) update.name = device.name;
+        if (device.connected !== undefined && device.connected !== current.connected) {
+            update.connected = device.connected;
+        }
+        if (controlType !== undefined && controlType !== current.control_type) {
+            update.control_type = controlType;
         }
 
-        devices[id] = await this.refreshDevice(id);
-        roomDB.syncDeviceRelation(devices[id], previousRoomId);
+        if (Object.keys(update).length) {
+            await this.devicesDb.update({ id }, update);
+        }
+
+        this.devices[id] = this.toMemoryDevice(device, this.devices[id]);
+        roomDB.syncDeviceRelation(this.devices[id], previousRoomId);
         logger.info(`[SMART HOME DB] Updated device info: ${id}`);
-        return devices[id];
+        return this.devices[id];
     }
 
     async updateDeviceState(deviceId, state) {
@@ -181,10 +167,11 @@ class SmartHomeDevicesDB {
             logger.error(`[SMART HOME DB] Device ${deviceId} doesn't exist`);
             throw new Error('Device does not exist');
         }
-        const updateData = { state };
         const previousRoomId = devices[deviceId]?.room?.id;
-        await this.devicesDb.update({ id: deviceId }, updateData);
-        devices[deviceId] = await this.refreshDevice(deviceId);
+        devices[deviceId] = {
+            ...devices[deviceId],
+            state,
+        };
         roomDB.syncDeviceRelation(devices[deviceId], previousRoomId);
         logger.info(`[SMART HOME DB] Updated device state: ${deviceId}`);
         return devices[deviceId];
@@ -195,7 +182,7 @@ class SmartHomeDevicesDB {
         const previousRoomId = devices[deviceId]?.room?.id;
         await this.devicesDb.delete({ id: deviceId });
         delete devices[deviceId];
-        roomDB.syncDeviceRelation({ id: deviceId }, previousRoomId);
+        roomDB.removeDeviceRelation(deviceId, previousRoomId);
         logger.info(`[SMART HOME DB] Deleted device: ${deviceId}`);
     }
 
@@ -206,18 +193,30 @@ class SmartHomeDevicesDB {
             throw new Error('Device does not exist');
         }
 
-        const dbroom = await this.resolveRoom({ id: roomId });
+        const dbroom = this.resolveCachedRoom({ id: roomId });
         const previousRoomId = devices[id].room?.id;
 
-        await this.devicesDb.save({
-            ...devices[id],
-            room: { id: dbroom.id },
-        });
+        await this.devicesDb.save(this.toDeviceRecord(devices[id], dbroom));
 
-        const savedDevice = await this.refreshDevice(id);
+        const savedDevice = this.toMemoryDevice(devices[id], devices[id], dbroom);
+        devices[id] = savedDevice;
         roomDB.syncDeviceRelation(savedDevice, previousRoomId);
         logger.info(`[SMART HOME DB] Updated device room: ${id} -> ${roomId}`);
         return savedDevice;
+    }
+
+    clearRoomForDevices(devices = []) {
+        const cachedDevices = this.getAllDevices();
+
+        for (const device of devices) {
+            const id = device.deviceId ?? device.id;
+            if (cachedDevices[id]) {
+                cachedDevices[id] = {
+                    ...cachedDevices[id],
+                    room: null,
+                };
+            }
+        }
     }
 }
 

@@ -1,47 +1,101 @@
 import rosHandler from '#lib/ros/connection.js';
 import ROSLIB from 'roslib';
 import logger from '#utils/logger.js';
-import { telegramManager } from '../telegram.manager.js';
+import { telegramService } from '../telegram.service.js';
 
 const parseOptions = options => {
-    if (!options || typeof options !== 'string') return options || {};
+    if (typeof options !== 'string') return options ?? {};
 
     try {
         return JSON.parse(options);
-    } catch (error) {
+    } catch {
         return {};
     }
 };
 
-const mapToRosDialog = (dialog = {}) => ({
-    id: dialog.id || '',
-    name: dialog.name || '',
-    title: dialog.title || '',
-    unread_count: Number(dialog.unreadCount) || 0,
-    type:
-        (Boolean(dialog.isUser) && 'user') ||
-        (Boolean(dialog.isGroup) && 'group') ||
-        (Boolean(dialog.isChannel) && 'channel'),
-    archived: Boolean(dialog.archived),
-    pinned: Boolean(dialog.pinned),
-});
-
-const mapToRosMessage = (message = {}) => ({
-    id: Number(message.id) || 0,
-    chat_id: message.chatId || '',
-    sender_id: message.senderId || '',
-    date: Number(message.date) || 0,
-    message: message.message || '',
-    out: Boolean(message.out),
-    mentioned: Boolean(message.mentioned),
-    media_unread: Boolean(message.mediaUnread),
-    silent: Boolean(message.silent),
-    post: Boolean(message.post),
-});
-
-const getUserData = req => ({
+const getRequestBody = req => ({
     id: req.id,
-    email: req.email,
+    email: req.email || undefined,
+    chat: req.chat,
+    message: req.message ?? req.text ?? req.data ?? '',
+    options: parseOptions(req.options),
+});
+
+const advertiseAsync = (service, callback) => {
+    if (service.isAdvertised || typeof callback !== 'function') return;
+
+    service.ros.on(service.name, async rosbridgeRequest => {
+        const response = {};
+        let success = true;
+
+        try {
+            success = await callback(rosbridgeRequest.args, response);
+        } catch (error) {
+            logger.warn(`[Telegram ROS service] Failed to handle ${service.name}: ${error.message}`);
+            success = false;
+        }
+
+        const call = {
+            op: 'service_response',
+            service: service.name,
+            values: new ROSLIB.ServiceResponse(response),
+            result: success,
+        };
+
+        if (rosbridgeRequest.id) call.id = rosbridgeRequest.id;
+        service.ros.callOnConnection(call);
+    });
+
+    service.ros.callOnConnection({
+        op: 'advertise_service',
+        type: service.serviceType,
+        service: service.name,
+    });
+    service.isAdvertised = true;
+};
+
+const toRosDialog = ({
+    id = '',
+    name = '',
+    title = '',
+    unreadCount = 0,
+    isUser = false,
+    isGroup = false,
+    isChannel = false,
+    archived = false,
+    pinned = false,
+} = {}) => ({
+    id,
+    name,
+    title,
+    unread_count: unreadCount,
+    type: isUser ? 'user' : isGroup ? 'group' : isChannel ? 'channel' : '',
+    archived,
+    pinned,
+});
+
+const toRosMessage = ({
+    id = 0,
+    chatId = '',
+    senderId = '',
+    date = 0,
+    message = '',
+    out = false,
+    mentioned = false,
+    mediaUnread = false,
+    silent = false,
+    post = false,
+} = {}) => ({
+    id,
+    chat_id: chatId,
+    sender_id: senderId,
+    date,
+    message,
+    out,
+    mentioned,
+    media_unread: mediaUnread,
+    silent,
+    post,
 });
 
 class TelegramROSService {
@@ -62,93 +116,90 @@ class TelegramROSService {
         this.getGroups = new ROSLIB.Service({
             ros: this.ros,
             name: '/telegram/chat/groups',
-            serviceType: 'sanad_interfaces/telegram/srv/GetTelegramGroups',
+            serviceType: 'sanad_interfaces/srv/GetTelegramGroups',
         });
-        this.getGroups.advertise(this.getGroupsCallback.bind(this));
+        advertiseAsync(this.getGroups, this.getGroupsCallback.bind(this));
 
         this.getUsers = new ROSLIB.Service({
             ros: this.ros,
             name: '/telegram/chat/users',
-            serviceType: 'sanad_interfaces/telegram/srv/GetTelegramUsers',
+            serviceType: 'sanad_interfaces/srv/GetTelegramUsers',
         });
-        this.getUsers.advertise(this.getUsersCallback.bind(this));
+        advertiseAsync(this.getUsers, this.getUsersCallback.bind(this));
 
         this.getMessages = new ROSLIB.Service({
             ros: this.ros,
             name: '/telegram/chat/messages',
-            serviceType: 'sanad_interfaces/telegram/srv/GetTelegramMessages',
+            serviceType: 'sanad_interfaces/srv/GetTelegramMessages',
         });
-        this.getMessages.advertise(this.getMessagesCallback.bind(this));
+        advertiseAsync(this.getMessages, this.getMessagesCallback.bind(this));
 
         this.sendMessage = new ROSLIB.Service({
             ros: this.ros,
             name: '/telegram/chat/send',
-            serviceType: 'sanad_interfaces/telegram/srv/SendTelegramMessage',
+            serviceType: 'sanad_interfaces/srv/SendTelegramMessage',
         });
-        this.sendMessage.advertise(this.sendMessageCallback.bind(this));
+        advertiseAsync(this.sendMessage, this.sendMessageCallback.bind(this));
     }
 
     async getGroupsCallback(req, res) {
         try {
-            const groups = await telegramManager.getDialogs(
-                getUserData(req),
-                parseOptions(req.options),
-                'groups'
-            );
-            res.groups = groups.map(mapToRosDialog);
+            const body = getRequestBody(req);
+            const groups = await telegramService.getDialogs(body, body.options, 'groups');
+            res.groups = groups.map(toRosDialog);
+            return true;
         } catch (error) {
             logger.warn(`[Telegram ROS service] Failed to get groups: ${error.message}`);
             res.groups = [];
+            return false;
         }
-        return true;
     }
 
     async getUsersCallback(req, res) {
         try {
-            const users = await telegramManager.getDialogs(
-                getUserData(req),
-                parseOptions(req.options),
-                'users'
-            );
-            res.users = users.map(mapToRosDialog);
+            const body = getRequestBody(req);
+            const users = await telegramService.getDialogs(body, body.options, 'users');
+            res.users = users.map(toRosDialog);
+            return true;
         } catch (error) {
             logger.warn(`[Telegram ROS service] Failed to get users: ${error.message}`);
             res.users = [];
+            return false;
         }
-        return true;
     }
 
     async getMessagesCallback(req, res) {
         try {
-            const messages = await telegramManager.getMessages(
-                getUserData(req),
-                req.chat,
-                parseOptions(req.options)
-            );
-            res.messages = messages.map(mapToRosMessage);
+            const body = getRequestBody(req);
+            const messages = await telegramService.getMessages(body, body.chat, body.options);
+            res.messages = messages.map(toRosMessage);
+            return true;
         } catch (error) {
             logger.warn(`[Telegram ROS service] Failed to get messages: ${error.message}`);
             res.messages = [];
+            return false;
         }
-        return true;
     }
 
     async sendMessageCallback(req, res) {
         try {
-            const message = await telegramManager.sendMessage(
-                getUserData(req),
-                req.chat,
-                req.message,
-                parseOptions(req.options)
+            const body = getRequestBody(req);
+            if (!body.message) throw new Error('telegram message is required');
+            const message = await telegramService.sendMessage(
+                body,
+                body.chat,
+                body.message,
+                body.options
             );
-            res.message = mapToRosMessage(message);
+            res.message = toRosMessage(message);
             res.success = true;
+            return true;
         } catch (error) {
             logger.warn(`[Telegram ROS service] Failed to send message: ${error.message}`);
-            res.message = mapToRosMessage({});
+            res.message = toRosMessage({});
             res.success = false;
+            return false;
         }
-        return true;
     }
 }
 

@@ -42,35 +42,35 @@ class IRROSService {
         this.getAllDevices = new ROSLIB.Service({
             ros: this.ros,
             name: '/ir/getAllDevices',
-            serviceType: 'sanad_interfaces/ir/srv/GetAllDevices',
+            serviceType: 'sanad_interfaces/srv/GetAllDevices',
         });
         this.getAllDevices.advertise(this.getAllDevicesCallback.bind(this));
 
         this.getDevice = new ROSLIB.Service({
             ros: this.ros,
             name: '/ir/getDevice',
-            serviceType: 'sanad_interfaces/ir/srv/GetDevice',
+            serviceType: 'sanad_interfaces/srv/GetDevice',
         });
         this.getDevice.advertise(this.getDeviceCallback.bind(this));
 
         this.createDevice = new ROSLIB.Service({
             ros: this.ros,
             name: '/ir/createDevice',
-            serviceType: 'sanad_interfaces/ir/srv/CreateDevice',
+            serviceType: 'sanad_interfaces/srv/CreateDevice',
         });
         this.createDevice.advertise(this.createDeviceCallback.bind(this));
 
         this.deleteDevice = new ROSLIB.Service({
             ros: this.ros,
             name: '/ir/deleteDevice',
-            serviceType: 'sanad_interfaces/ir/srv/DeleteDevice',
+            serviceType: 'sanad_interfaces/srv/DeleteDevice',
         });
         this.deleteDevice.advertise(this.deleteDeviceCallback.bind(this));
 
         this.updateDeviceKeys = new ROSLIB.Service({
             ros: this.ros,
             name: '/ir/updateDeviceKeys',
-            serviceType: 'sanad_interfaces/ir/srv/UpdateDeviceKeys',
+            serviceType: 'sanad_interfaces/srv/UpdateDeviceKeys',
         });
         this.updateDeviceKeys.advertise(this.updateDeviceKeysCallback.bind(this));
     }
@@ -101,7 +101,7 @@ class IRROSService {
         };
 
         try {
-            await IRService.createDevice(device);
+            await IRService.createDeviceFromROS(device);
             res.success = true;
         } catch (error) {
             logger.warn(`[IR ROS service] Failed to create device: ${error.message}`);
@@ -123,7 +123,7 @@ class IRROSService {
 
     async updateDeviceKeysCallback(req, res) {
         try {
-            await IRService.updateDeviceKeys(getDeviceName(req), parseJsonField(req.keys));
+            await IRService.replaceDeviceKeys(getDeviceName(req), parseJsonField(req.keys));
             res.success = true;
         } catch (error) {
             logger.warn(`[IR ROS service] Failed to update device keys: ${error.message}`);

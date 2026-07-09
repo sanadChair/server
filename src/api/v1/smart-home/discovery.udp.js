@@ -40,10 +40,11 @@ class LocalDiscovery {
             logger.info(`[SERVER-DISCOVERY] PASSING deviceId check`);
             delete payload.type;
             delete payload.requestId;
+            console.log(payload)
             this.devices[payload.deviceId] = {
                 id: payload.deviceId,
                 name: payload.name,
-                control_type: payload.control_type,
+                control_type: payload.control_type ?? payload.controlType,
                 state: payload.state,
                 ip: rinfo.address || payload.ip,
             };

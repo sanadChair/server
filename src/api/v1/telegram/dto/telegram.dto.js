@@ -59,6 +59,6 @@ export const SendTelegramMessage = {
 export const PostTelegramCode = {
     body: z.object({
         phoneNumber: z.string(),
-        otp: z.string(),
+        otp: z.string().min(1),
     }),
 };

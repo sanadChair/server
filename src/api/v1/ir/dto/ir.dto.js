@@ -37,5 +37,6 @@ export const listenToKey = {
     body: z.object({
         deviceName: z.string(),
         keyName: z.string(),
+        timeoutMs: z.number().positive().optional(),
     }),
 };

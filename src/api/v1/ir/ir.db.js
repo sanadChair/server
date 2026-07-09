@@ -16,7 +16,7 @@ class IRDB {
         return await this.irDB.insert({
             device_name: device.deviceName,
             pose: device.pose,
-            ...(device.keys && { keys: device.keys }),
+            keys: device.keys || {},
         });
     }
 

@@ -22,6 +22,6 @@ export class IRController {
     }
 
     static async listenToKeys(req, res) {
-        return await IRService.listenToKeys(req.body.deviceName, req.body.keyName);
+        return await IRService.listenToKeys(req.body.deviceName, req.body.keyName, req.body.timeoutMs);
     }
 }

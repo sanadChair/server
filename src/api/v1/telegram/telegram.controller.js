@@ -1,6 +1,6 @@
 import { OTPManager } from './OTPManager.js';
 import { telegramConnectionManager } from './telegram.connection.manager.js';
-import { telegramManager } from './telegram.manager.js';
+import { telegramService } from './telegram.service.js';
 
 export class TelegramController {
     static async needsOTP(req, res) {
@@ -20,19 +20,19 @@ export class TelegramController {
     }
 
     static async getGroups(req, res) {
-        return await telegramManager.getDialogs(req.body, req.body.options, 'groups');
+        return await telegramService.getDialogs(req.body, req.body.options, 'groups');
     }
 
     static async getUsers(req, res) {
-        return await telegramManager.getDialogs(req.body, req.body.options, 'users');
+        return await telegramService.getDialogs(req.body, req.body.options, 'users');
     }
 
     static async getMessages(req, res) {
-        return await telegramManager.getMessages(req.body, req.body.chat, req.body.options);
+        return await telegramService.getMessages(req.body, req.body.chat, req.body.options);
     }
 
     static async sendMessage(req, res) {
-        return await telegramManager.sendMessage(
+        return await telegramService.sendMessage(
             req.body,
             req.body.chat,
             req.body.message,
