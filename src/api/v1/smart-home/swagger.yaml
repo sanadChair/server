@@ -1,12 +1,12 @@
 openapi: 3.0.3
 info:
   title: SANAD Smart Home API
-  description: API to discover, control, and manage smart home devices.
+  description: API to discover, control, and manage smart home devices and rooms.
   version: 1.0.0
 
 tags:
   - name: Smart Home
-    description: Smart home discovery, device control, and device management.
+    description: Smart home discovery, device control, device management, and room management.
 
 paths:
   /api/v1/smart-home/discover:
@@ -14,7 +14,7 @@ paths:
       tags:
         - Smart Home
       summary: Scan the network
-      description: Runs UDP discovery, stores newly discovered devices, marks missing devices disconnected, and returns all cached devices.
+      description: Runs UDP discovery, stores newly discovered devices, marks missing devices disconnected, and returns all devices.
       parameters:
         - in: query
           name: timeoutMs
@@ -38,7 +38,7 @@ paths:
       summary: Get all devices
       responses:
         '200':
-          description: All cached devices keyed by device id.
+          description: All devices keyed by device id.
           content:
             application/json:
               schema:
@@ -159,7 +159,7 @@ paths:
       tags:
         - Smart Home
       summary: Delete a device
-      description: Sends factory reset to the physical device, then deletes the cached DB record.
+      description: Sends factory reset to the physical device, then deletes the DB record.
       parameters:
         - $ref: '#/components/parameters/DeviceId'
       responses:
@@ -170,9 +170,112 @@ paths:
               schema:
                 $ref: '#/components/schemas/DeleteDeviceResponse'
 
+  /api/v1/smart-home/rooms:
+    get:
+      tags:
+        - Smart Home
+      summary: Get all rooms
+      responses:
+        '200':
+          description: All rooms keyed by room id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomsMapResponse'
+    post:
+      tags:
+        - Smart Home
+      summary: Register a new room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRoomRequest'
+      responses:
+        '200':
+          description: Registered room.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+        '400':
+          description: Validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+    patch:
+      tags:
+        - Smart Home
+      summary: Update existing room info
+      description: Runtime expects the room id in the request body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoomRequest'
+      responses:
+        '200':
+          description: Updated room.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+
+  /api/v1/smart-home/rooms/{id}:
+    get:
+      tags:
+        - Smart Home
+      summary: Get a room by id
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      responses:
+        '200':
+          description: Room or null/undefined if not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+    delete:
+      tags:
+        - Smart Home
+      summary: Delete a room by id
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      responses:
+        '200':
+          description: Deletion result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteRoomResponse'
+
+  /api/v1/smart-home/rooms/{id}/navigate:
+    get:
+      tags:
+        - Smart Home
+      summary: Navigate robot to room
+      description: Sends a Nav2 NavigateToPose goal using the room stored pose.
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      responses:
+        '200':
+          description: Navigation goal sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NavigateRoomResponse'
 components:
   parameters:
     DeviceId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+    RoomId:
       in: path
       name: id
       required: true
@@ -204,11 +307,46 @@ components:
         room:
           nullable: true
           allOf:
-            - $ref: '#/components/schemas/Room'
+            - $ref: '#/components/schemas/RoomRef'
 
     Room:
       type: object
-      description: Room assigned to the device. This nested room does not include its devices array to avoid circular responses.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        min_x:
+          type: number
+        max_x:
+          type: number
+        min_y:
+          type: number
+        max_y:
+          type: number
+        theta:
+          type: number
+        pose_x:
+          type: number
+        pose_y:
+          type: number
+        pose_theta:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        devices:
+          type: array
+          items:
+            - $ref: '#/components/schemas/DeviceRef'
+
+    RoomRef:
+      type: object
+      description: Room assigned to a device. Does not include the devices array to avoid circular responses.
       properties:
         id:
           type: string
@@ -232,32 +370,38 @@ components:
         pose_theta:
           type: number
 
+    DeviceRef:
+      type: object
+      description: Device inside a room. Does not include the room field to avoid circular responses.
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        control_type:
+          type: string
+        state:
+          type: integer
+        connected:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
     DevicesMap:
       type: object
       description: Object keyed by device id.
       additionalProperties:
         $ref: '#/components/schemas/Device'
-      example:
-        switch-001:
-          id: switch-001
-          name: Main Light
-          ip: 192.168.1.40
-          control_type: binary
-          state: 1
-          connected: true
-          created_at: '2026-05-21T10:00:00.000Z'
-          updated_at: '2026-05-21T10:05:00.000Z'
-          room:
-            id: 24f6d9b4-7c44-4bd2-8d0e-62c7adfc35b7
-            name: Living Room
-            min_x: 0
-            max_x: 4.5
-            min_y: 0
-            max_y: 3.2
-            theta: 0
-            pose_x: 2.1
-            pose_y: 1.5
-            pose_theta: 0
+
+    RoomsMap:
+      type: object
+      description: Object keyed by room id.
+      additionalProperties:
+        $ref: '#/components/schemas/Room'
 
     RegisterDeviceRequest:
       type: object
@@ -322,121 +466,75 @@ components:
         roomId:
           type: string
 
-    DeleteResult:
+    RegisterRoomRequest:
       type: object
+      required:
+        - id
+        - name
+        - min_x
+        - max_x
+        - min_y
+        - max_y
+        - theta
+        - pose_x
+        - pose_y
+        - pose_theta
       properties:
         id:
           type: string
-        deleted:
-          type: boolean
-          example: true
-
-    TypeOrmUpdateResult:
-      type: object
-      properties:
-        generatedMaps:
-          type: array
-          items:
-            type: object
-        raw:
-          type: array
-          items:
-            type: object
-        affected:
-          type: integer
-
-    Meta:
-      type: object
-      properties:
-        timestamp:
+          format: uuid
+        name:
           type: string
+        min_x:
+          type: number
+        max_x:
+          type: number
+        min_y:
+          type: number
+        max_y:
+          type: number
+        theta:
+          type: number
+        pose_x:
+          type: number
+        pose_y:
+          type: number
+        pose_theta:
+          type: number
 
-    SuccessResponse:
+    UpdateRoomRequest:
       type: object
+      description: Include the room id, then send only the fields you want to update. All room fields below are optional.
+      required:
+        - id
       properties:
-        success:
-          type: boolean
-          example: true
-        data: {}
-        meta:
-          $ref: '#/components/schemas/Meta'
-
-    DevicesMapResponse:
-      allOf:
-        - $ref: '#/components/schemas/SuccessResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/DevicesMap'
-
-    DeviceResponse:
-      allOf:
-        - $ref: '#/components/schemas/SuccessResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/Device'
-
-    ControlDeviceResponse:
-      allOf:
-        - $ref: '#/components/schemas/SuccessResponse'
-        - type: object
-          properties:
-            data:
-              oneOf:
-                - $ref: '#/components/schemas/Device'
-                - type: boolean
-                  example: false
-
-    DeleteDeviceResponse:
-      allOf:
-        - $ref: '#/components/schemas/SuccessResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/DeleteResult'
-
-    UpdateResultResponse:
-      allOf:
-        - $ref: '#/components/schemas/SuccessResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/TypeOrmUpdateResult'
-
-    AnyResponse:
-      allOf:
-        - $ref: '#/components/schemas/SuccessResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              description: Shape depends on the physical device response.
-
-    ErrorResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: false
-        reason:
+        id:
           type: string
-        meta:
-          type: object
-          properties:
-            timestamper:
-              type: string
-
-    ValidationErrorResponse:
-      type: object
-      properties:
-        error:
+          description: Required room id to update.
+        name:
           type: string
-          example: Invalid data
-        details:
-          type: array
-          items:
-            type: object
-            properties:
-              message:
-                type: string
+          description: Optional.
+        min_x:
+          type: number
+          description: Optional.
+        max_x:
+          type: number
+          description: Optional.
+        min_y:
+          type: number
+          description: Optional.
+        max_y:
+          type: number
+          description: Optional.
+        theta:
+          type: number
+          description: Optional.
+        pose_x:
+          type: number
+          description: Optional.
+        pose_y:
+          type: number
+          description: Optional.
+        pose_theta:
+          type: number
+          description: Optional.

@@ -1,7 +1,7 @@
 import rosHandler from '#lib/ros/connection.js';
 import ROSLIB from 'roslib';
 import logger from '#utils/logger.js';
-import { roomService } from '../room.service.js';
+import { smartHomeService } from '../smart-home.service.js';
 
 const mapToRosRoom = (room = {}) => ({
     id: room.id,
@@ -68,14 +68,14 @@ class RoomRosService {
         this.updateRoom.advertise(this.updateRoomCallback.bind(this));
     }
 
-    getAllRoomsCallback(req, res) {
-        const rooms = roomService.getAllRooms();
+    async getAllRoomsCallback(req, res) {
+        const rooms = await smartHomeService.getAllRooms();
         res.rooms = Object.values(rooms || {}).map(mapToRosRoom);
         return true;
     }
 
-    deleteRoomCallback(req, res) {
-        const rooms = roomService.getAllRooms();
+    async deleteRoomCallback(req, res) {
+        const rooms = await smartHomeService.getAllRooms();
         if (!rooms[req.id]) {
             logger.warn(
                 `[Room ROS service] Failed to delete room (name=${req.id}): room doesn't exist`
@@ -83,16 +83,15 @@ class RoomRosService {
             res.success = false;
             return true;
         }
-        roomService.deleteRoom(req.id).catch(error => {
+        smartHomeService.deleteRoom(req.id).catch(error => {
             logger.warn(`[Room ROS service] Failed to delete room: ${error.message}`);
         });
         res.success = true;
         return true;
     }
 
-    getRoomCallback(req, res) {
-        const rooms = roomService.getAllRooms();
-        // Fallback: look up by name (req.name from GetRoom.srv) or id
+    async getRoomCallback(req, res) {
+        const rooms = await smartHomeService.getAllRooms();
         const room =
             Object.values(rooms || {}).find(r => r.name === req.name || r.id === req.name) ||
             rooms?.[req.id];
@@ -101,9 +100,9 @@ class RoomRosService {
         return true;
     }
 
-    registerRoomCallback(req, res) {
+    async registerRoomCallback(req, res) {
         const room = req.room;
-        const rooms = roomService.getAllRooms();
+        const rooms = await smartHomeService.getAllRooms();
         if (rooms[room.id] || Object.values(rooms || {}).find(r => r.name === room.name)) {
             logger.warn(
                 `[Room ROS service] Failed to create room (name=${room.name}): room already exists`
@@ -111,17 +110,16 @@ class RoomRosService {
             res.success = false;
             return true;
         }
-        roomService.registerRoom(room).catch(error => {
+        smartHomeService.registerRoom(room).catch(error => {
             logger.warn(`[Room ROS service] Failed to register room: ${error.message}`);
         });
         res.success = true;
         return true;
     }
 
-    updateRoomCallback(req, res) {
+    async updateRoomCallback(req, res) {
         const room = req.room;
-
-        const rooms = roomService.getAllRooms();
+        const rooms = await smartHomeService.getAllRooms();
         const existing = Object.values(rooms || {}).find(r => r.name === room.name);
         if (!existing || rooms[room.id]) {
             logger.warn(
@@ -131,7 +129,7 @@ class RoomRosService {
             return true;
         }
         room.id = existing.id;
-        roomService.updateRoom(room).catch(error => {
+        smartHomeService.updateRoom(room).catch(error => {
             logger.warn(`[Room ROS service] Failed to update room: ${error.message}`);
         });
         res.success = true;

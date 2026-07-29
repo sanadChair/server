@@ -13,7 +13,7 @@ const mapToRosDevice = (dev = {}) => ({
     updated_at: dev.updated_at ? String(dev.updated_at) : '',
 });
 
-class SmartHomeService {
+class SmartHomeRosService {
     constructor() {
         rosHandler.on('ros_reconnected', newRosInstance => {
             logger.info('[SmartHome] ROS reconnected, refreshing subscription...');
@@ -71,8 +71,8 @@ class SmartHomeService {
         this.moveDevice.advertise(this.moveDeviceCallback.bind(this));
     }
 
-    moveDeviceCallback(req, res) {
-        const devices = smartHomeService.getAllDevices();
+    async moveDeviceCallback(req, res) {
+        const devices = await smartHomeService.getAllDevices();
         if (!devices[req.device_id]) {
             logger.warn(
                 `[Smart-home ROS service] Failed to move device (id=${req.device_id}): device doesn't exist`
@@ -87,8 +87,8 @@ class SmartHomeService {
         return true;
     }
 
-    controlDeviceCallback(req, res) {
-        const devices = smartHomeService.getAllDevices();
+    async controlDeviceCallback(req, res) {
+        const devices = await smartHomeService.getAllDevices();
         if (!devices[req.id]) {
             logger.warn(
                 `[Smart-home ROS service] Failed to update device (id=${req.id}): device doesn't exist`
@@ -105,14 +105,14 @@ class SmartHomeService {
         return true;
     }
 
-    getAllDevicesCallback(req, res) {
-        const devices = smartHomeService.getAllDevices();
+    async getAllDevicesCallback(req, res) {
+        const devices = await smartHomeService.getAllDevices();
         res.devices = Object.values(devices || {}).map(mapToRosDevice);
         return true;
     }
 
     async deleteDeviceCallback(req, res) {
-        const devices = smartHomeService.getAllDevices();
+        const devices = await smartHomeService.getAllDevices();
         if (!devices[req.id]) {
             logger.warn(
                 `[Smart-home ROS service] Failed to delete device (id=${req.id}): device doesn't exist`
@@ -129,13 +129,13 @@ class SmartHomeService {
         return true;
     }
 
-    getDeviceCallback(req, res) {
-        const dev = smartHomeService.getDevice(req.id);
+    async getDeviceCallback(req, res) {
+        const dev = await smartHomeService.getDevice(req.id);
         res.device = dev ? mapToRosDevice(dev) : mapToRosDevice({});
         return true;
     }
 
-    registerDeviceCallback(req, res) {
+    async registerDeviceCallback(req, res) {
         const devMsg = req.device;
         const device = {
             id: devMsg.id,
@@ -146,7 +146,7 @@ class SmartHomeService {
             created_at: devMsg.created_at,
             updated_at: devMsg.updated_at,
         };
-        const devices = smartHomeService.getAllDevices();
+        const devices = await smartHomeService.getAllDevices();
         if (devices[device.id]) {
             logger.warn(
                 `[Smart-home ROS service] Failed to register device (id=${device.id}): device already exists`
@@ -164,4 +164,4 @@ class SmartHomeService {
     }
 }
 
-export default new SmartHomeService();
+export default new SmartHomeRosService();

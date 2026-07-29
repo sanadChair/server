@@ -15,6 +15,11 @@ export const DevicesSchema = new EntitySchema({
             type: 'text',
             nullable: false,
         },
+        state: {
+            type: 'integer',
+            nullable: false,
+            default: 0,
+        },
         connected: {
             type: 'boolean',
             nullable: false,

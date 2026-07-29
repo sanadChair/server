@@ -18,11 +18,27 @@ import {
     registerDeviceDto,
     updateDeviceDto,
 } from './dto/device.dto.js';
+import {
+    deleteRoomDto,
+    getRoomDto,
+    navigateToRoomDto,
+    registerRoomDto,
+    updateRoomDto,
+} from './dto/room.dto.js';
+import {
+    deleteRoom,
+    getAllRooms,
+    getRoom,
+    navigateToRoom,
+    registerRoom,
+    updateRoom,
+} from './smart-home.controller.js';
 
 export const SmartHomeRouter = {
     customRouter: true,
     base: '/smart-home',
     routes: [
+        // Discovery
         {
             name: 'discover',
             description: 'discover devices on network',
@@ -32,6 +48,7 @@ export const SmartHomeRouter = {
             dto: deviceDiscoveryDto,
             middlewares: [],
         },
+        // Devices
         {
             name: 'getAllDevices',
             description: 'get all devices',
@@ -47,6 +64,15 @@ export const SmartHomeRouter = {
             path: '/devices',
             dto: registerDeviceDto,
             controller: registerDevice,
+            middlewares: [],
+        },
+        {
+            name: 'updateDeviceInfo',
+            description: 'update existing device info',
+            method: 'PATCH',
+            path: '/devices',
+            dto: updateDeviceDto,
+            controller: updateDeviceInfo,
             middlewares: [],
         },
         {
@@ -76,8 +102,6 @@ export const SmartHomeRouter = {
             controller: changeDeviceRoom,
             middlewares: [],
         },
-
-        // Generic dynamic routes LAST
         {
             name: 'getDevice',
             description: 'get one device',
@@ -88,21 +112,69 @@ export const SmartHomeRouter = {
             middlewares: [],
         },
         {
-            name: 'updateDeviceInfo',
-            description: 'update existing device info',
-            method: 'PATCH',
-            path: '/devices/',
-            dto: updateDeviceDto,
-            controller: updateDeviceInfo,
-            middlewares: [],
-        },
-        {
             name: 'deleteDevice',
             description: 'delete a device by id',
             method: 'DELETE',
             path: '/devices/:id',
             dto: deleteDeviceDto,
             controller: deleteDevice,
+            middlewares: [],
+        },
+        // Rooms
+        {
+            name: 'getAllRooms',
+            description: 'get all rooms',
+            method: 'GET',
+            path: '/rooms',
+            controller: getAllRooms,
+            middlewares: [],
+            response: {
+                200: '',
+            },
+        },
+        {
+            name: 'registerRoom',
+            description: 'register a new room',
+            method: 'POST',
+            path: '/rooms',
+            dto: registerRoomDto,
+            controller: registerRoom,
+            middlewares: [],
+        },
+        {
+            name: 'updateRoom',
+            description: 'update existing room info',
+            method: 'PATCH',
+            path: '/rooms',
+            dto: updateRoomDto,
+            controller: updateRoom,
+            middlewares: [],
+        },
+        {
+            name: 'getRoom',
+            description: 'get one room',
+            method: 'GET',
+            path: '/rooms/:id',
+            dto: getRoomDto,
+            controller: getRoom,
+            middlewares: [],
+        },
+        {
+            name: 'deleteRoom',
+            description: 'delete a room by id',
+            method: 'DELETE',
+            path: '/rooms/:id',
+            dto: deleteRoomDto,
+            controller: deleteRoom,
+            middlewares: [],
+        },
+        {
+            name: 'navigateToRoom',
+            description: 'navigate robot to room',
+            method: 'GET',
+            path: '/rooms/:id/navigate',
+            dto: navigateToRoomDto,
+            controller: navigateToRoom,
             middlewares: [],
         },
     ],
